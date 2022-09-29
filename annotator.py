@@ -179,7 +179,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         imagePix = PyQt5.QtGui.QPixmap(qimage)
         annotator = Annotator(imagePix.size(), ct_vol.shape, resize_size)
         annotator.imagePix = imagePix
-        annotator.annotationsFilename = os.path.join("data/labels",os.path.basename(name))
+        annotator.annotationsFilename = os.path.join("data/labelsTr",os.path.basename(name))
         
         #TODO - fix network
         """ For using segmentation network
@@ -659,7 +659,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             sitk_t1 = sitk.ReadImage(label_name)
             label_vol = sitk.GetArrayFromImage(sitk_t1)
         else:
-            label = os.path.join("data/labels",os.path.basename(self.filename))
+            label = os.path.join("../data/labelsTr",os.path.basename(self.filename))
             
             tmp = sitk.ReadImage(label)
     
