@@ -33,6 +33,7 @@ for img_name in tqdm(im_list):
     if label.shape != (128,128,96):
         #image = cv2.resize(image,dsize=(128, 128), interpolation=cv2.INTER_AREA)
         label = cv2.resize(label,dsize=(128, 128), interpolation=cv2.INTER_NEAREST)
+    label[(label==2)] = 1
         
     base_name = os.path.basename(img_name)
     f_names = base_name.replace(".nii", "")
