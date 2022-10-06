@@ -115,6 +115,8 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         self.timer.timeout.connect(self.hideText)
         
         self.mouseRelease = False
+        self.point_list = []
+
         # Filename for saving annotations
         self.saveAddress = 'annotations.png'
 
@@ -157,8 +159,17 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         
         if resize_shape is None:
             resize_shape = (ct_vol.shape[2],ct_vol.shape[1])
-            
-        
+        #TODO
+        """   
+        import torchio
+        import time
+        resizer = torchio.Resize([ct_vol.shape[0],resize_shape[0],resize_shape[1]])
+        t = time.time()
+        ct_vol = resizer(ct_vol[np.newaxis,:])[0]
+        print("resize took",time.time()-t)
+        print(ct_vol.shape)
+        """
+        # im = ct_vol[0,:,:] 
         im = cv2.resize(ct_vol[0,:,:],resize_shape)
         gray = im.copy() # check whether needed
         
@@ -179,7 +190,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         imagePix = PyQt5.QtGui.QPixmap(qimage)
         annotator = Annotator(imagePix.size(), ct_vol.shape, resize_size)
         annotator.imagePix = imagePix
-        annotator.annotationsFilename = os.path.join("data/labelsTr",os.path.basename(name))
+        annotator.annotationsFilename = os.path.join("Decathlon/labelsTr",os.path.basename(name))
         
         #TODO - fix network
         """ For using segmentation network
@@ -214,7 +225,6 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         annotator.resize_shape = resize_shape
         annotator.spacing=spacing
         annotator.cur_slice = 0  
-        annotator.ct_list = ct_list
         annotator.use_dicom = use_dicom
         annotator.calculateSphere()
         annotator.predict() 
@@ -434,7 +444,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
                 self.last_resize_point = point
                 self.lastDrawPoint = event.pos()   
                 self.activelyDrawing = True
-                self.update_pred_point(point)
+                # self.update_pred_point(point)
+                self.point_list.append([point.x(),point.y()])
+
                 # print("event pos", event.pos())
                 # print("point pos", point)
             self.update()
@@ -454,7 +466,8 @@ class Annotator(PyQt5.QtWidgets.QWidget):
                                 (event.y()-self.padding.y())/self.size.height() * self.ct_shape[1])
             painter_resize.drawLine(self.last_resize_point, point)
             self.last_resize_point = point
-            self.update_pred_point(point)
+            # self.update_pred_point(point)
+            self.point_list.append([point.x(),point.y()])
         # just moving around
         self.drawCursorPoint(event.pos())
             
@@ -466,6 +479,8 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         if self.activelyDrawing:
             self.oldAnn.append(self.annotationPix.copy())
             self.oldResize.append(self.resizePix.copy())
+            self.update_pred_list(self.point_list)
+            self.point_list = []
             self.activelyDrawing = False
 
     
@@ -604,33 +619,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         self.update()
     
     def update_pred_point(self,event):
-        # event is in (x,y) from origo top left - already reshaped to ct_shape?
-        point = [event.x()-self.padding.x(),event.y()-self.padding.y()]
-        # point = [event.x(),event.y()]
-        """ for one circle on one slice
-        point[0] *= self.ct_shape[2]/self.resize_shape[0]
-        point[1] *= self.ct_shape[1]/self.resize_shape[1]
-        center = (int(point[0]),int(point[1]))
-        
-        center = (event.x(),event.y())
-        radius = round(self.penWidth*self.ct_shape[2]/self.resize_shape[0]*0.5)
-        cv2.circle(self.pred[self.cur_slice],center,radius,self.label,-1)
-        
-        
-        X, Y, Z = np.meshgrid(np.arange(self.ct_shape[2]),np.arange(self.ct_shape[1]),np.arange(self.ct_shape[0]))
-        radiusXY = self.penWidth*self.ct_shape[2]/self.resize_shape[0]*0.5
-        radiusZ = self.penWidth*self.ct_shape[2]/self.resize_shape[0]*0.5 * self.spacing[0]/self.spacing[2]
-        import time
-        t = time.time()
-        sphere = (np.power((X-event.x())/radiusXY,2)
-                +np.power((Y-event.y())/radiusXY,2)
-                +np.power((Z-self.cur_slice)/radiusZ,2) <=1)
-        # cv2.imshow("debug",sphere[:,:,self.cur_slice].astype(float))
-        # self.pred[sphere.transpose(2,0,1)] = 1
-        print("old elapsed time",time.time()-t)
-        self.draw_mask()
-        """
-        
+        # event is in (x,y) from origo top left - already reshaped to ct_shape?        
         # fast try
         
         shift = (event.x() - self.ct_shape[2]//2,event.y() - self.ct_shape[1]//2,self.cur_slice - self.ct_shape[0]//2)
@@ -638,11 +627,22 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         # print("event",event.x(),event.y(),self.cur_slice)
         # cur_sphere = np.roll(self.sphere,shift=shift, axis=(0,1,2)).transpose(2,1,0)
         
-        indices = (self.sphere_nonzero[2]+shift[2], self.sphere_nonzero[1]+shift[1], self.sphere_nonzero[0]+shift[0])
+        indices = np.array([self.sphere_nonzero[2]+shift[2], self.sphere_nonzero[1]+shift[1], self.sphere_nonzero[0]+shift[0]])
         
         # cv2.imshow("debug",sphere[:,:,self.cur_slice].astype(float))
-        self.pred[indices] = 1
+        self.pred[indices[0],indices[1],indices[2]] = 1
     
+    def update_pred_list(self,point_list):
+        shifts = np.array(point_list) - np.array([self.ct_shape[2]//2, self.ct_shape[1]//2])
+        shifts = np.hstack((shifts,np.ones((len(shifts),1))*self.cur_slice- self.ct_shape[0]//2)).astype(int)
+        indices = np.empty((0,3),dtype=int)
+        for shift in shifts:
+            indices = np.unique(np.vstack((indices,np.array([self.sphere_nonzero[2]+shift[2],
+                                self.sphere_nonzero[1]+shift[1],
+                                self.sphere_nonzero[0]+shift[0]]).T)),axis=0)
+
+        self.pred[indices[:,0],indices[:,1],indices[:,2]] = 1
+        
     def update_pred(self):
         annotations = qimage2ndarray.rgb_view(self.resizePix.toImage())
         
@@ -659,7 +659,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             sitk_t1 = sitk.ReadImage(label_name)
             label_vol = sitk.GetArrayFromImage(sitk_t1)
         else:
-            label = os.path.join("../data/labelsTr",os.path.basename(self.filename))
+            label = os.path.join("../Decathlon/labelsTr",os.path.basename(self.filename))
             
             tmp = sitk.ReadImage(label)
     

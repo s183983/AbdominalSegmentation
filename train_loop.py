@@ -32,17 +32,19 @@ from model_unet_3d import UNet3D #AbstractUNet
 with HiddenPrints():
     import numpy as np    
 
-ROOT = "C:/Users/lakri/Desktop/DTU/9.semester/Special Course/"
+ROOT = "../"
 
 def train_classifier(args, net, optim_net, start_iter, 
                      dl_tr, dl_va, ds_te, ds_tr):
     
-    if not os.path.isdir(ROOT+"runs/"+args.name+"/"):
-        os.mkdir(ROOT+"runs/"+args.name+"/")
-    if not os.path.isdir(ROOT+"runs/"+args.name+"/checkpoint/"):
-        os.mkdir(ROOT+"runs/"+args.name+"/checkpoint/")
-    if not os.path.isdir(ROOT+"runs/"+args.name+"/images/"):
-        os.mkdir(ROOT+"runs/"+args.name+"/images/")
+    if not os.path.isdir(ROOT+"runs"):
+        os.mkdir(ROOT+"runs")
+    if not os.path.isdir(ROOT+"runs/"+args.name):
+        os.mkdir(ROOT+"runs/"+args.name)
+    if not os.path.isdir(ROOT+"runs/"+args.name+"/checkpoint"):
+        os.mkdir(ROOT+"runs/"+args.name+"/checkpoint")
+    if not os.path.isdir(ROOT+"runs/"+args.name+"/images"):
+        os.mkdir(ROOT+"runs/"+args.name+"/images")
     
     
     device = "cuda"
@@ -259,7 +261,7 @@ if __name__ == "__main__":
         max_p=0.6,rampup_ite=args.training.aug_rampup) if args.training.augment else None
     
     ds_tr = CT_Dataset(mode="train",
-                         data_path='C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/',
+                         data_path='../',
                          transform=transform_tr,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
@@ -267,7 +269,7 @@ if __name__ == "__main__":
                          interp_mode = args.training.interp_mode)
 
     ds_va = CT_Dataset(mode="train",
-                         data_path='C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/',
+                         data_path='../',
                          transform=transform_tr,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
@@ -276,13 +278,13 @@ if __name__ == "__main__":
     ds_te = None
     
     
-    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch, drop_last=True,num_workers=4)
-    dl_va = torch.utils.data.DataLoader(ds_va,batch_size=args.training.batch, drop_last=True,num_workers=4)
+    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch, drop_last=True,num_workers=1)
+    dl_va = torch.utils.data.DataLoader(ds_va,batch_size=args.training.batch, drop_last=True,num_workers=1)
     
     dl_tr = sample_data(dl_tr)
     dl_va = sample_data(dl_va)
     
     if wandb is not None and args.wandb:
-        wandb.init(project='3DUnet_onescan', entity='bjonze',config=args_dict)
+        wandb.init(project='3DUnet_onescan', entity='s183983',config=args_dict)
         
     train_classifier(args, net, net_optim, start_iter, dl_tr, dl_va, ds_te, ds_tr)

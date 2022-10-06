@@ -44,9 +44,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.volFrame.mouseRelease.connect(self.mouseReleaseEvent)
         
         
-        self.iren_3d = None
+        
+        self.initRender()
         # self.setup_screen_things()
-        self.setup_screen_things_3_d()
+        # self.setup_screen_things_3_d()
+        
         
         self.hl.addWidget(self.split)
         self.frame.setLayout(self.hl)
@@ -69,6 +71,13 @@ class MainWindow(QtWidgets.QMainWindow):
     """
     Setup a simple 3D scene with a sphere
     """
+    def initRender(self):
+        self.iren_3d = None
+        self.actor = None
+        self.ren = vtk.vtkRenderer()
+        self.surfaceFrame.GetRenderWindow().AddRenderer(self.ren)
+        self.iren_3d = self.surfaceFrame.GetRenderWindow().GetInteractor()
+        self.renderMesh()
     def setup_screen_things_3_d(self):
         self.ren = vtk.vtkRenderer()
         self.surfaceFrame.GetRenderWindow().AddRenderer(self.ren)
@@ -194,7 +203,7 @@ if __name__ == "__main__":
         folder = "../Pancreas"
     else:
         # Test folder
-        folder = "../data/imagesTr"
+        folder = "../Decathlon/imagesTr"
 
     use_file_dialog = False
     if use_file_dialog:
