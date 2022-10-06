@@ -25,9 +25,9 @@ def get_args(name="default",dict_mode=False):
                 },
                 "training": {
                     "reshape": [128,128,96], #reshape size for batch. If int instead of list then same reshape is used for spacial dimensions
-                    "reshape_mode": 'padding', #'padding' or 'fixed_size'
-                    "interp_mode": ["area","area"], #interpolation mode for rescaling of images
-                    "max_iter": 100000, #Number of training iterations to complete training
+                    "reshape_mode": None, # ['padding', 'fixed_size' or None]
+                    "interp_mode": ["area","nearest"], #interpolation mode for rescaling of images
+                    "max_iter": 1500, #Number of training iterations to complete training
                     "batch": 2, #Batch size
                     "lr": 1e-4,#Learning rate
                     "weight_decay": 1e-5,#Adam optimizer weight decay
@@ -35,7 +35,7 @@ def get_args(name="default",dict_mode=False):
                     "aug_rampup": 10000, 
                     "recon_mode": "BCE", #one of ["L1", "L2", "BCE"]
                     "pretrain_name_ite": None,
-                    "datasets": "Decathlon", #"Pancreas-CT",
+                    "datasets": "preprocessed_Decathlon", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
                     "dataset_p": None,
                     "weight_mode_loss": None,
                     

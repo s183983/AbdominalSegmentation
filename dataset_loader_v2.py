@@ -16,12 +16,12 @@ class CT_Dataset(torch.utils.data.Dataset):
     
 
     def __init__(self, mode="train",
-                     data_path='C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/',
+                     data_path="../data",
                      transform=None,
                      reshape=[128,128,96],
-                     reshape_mode = 'padding', #'padding' or 'fixed_size'
-                     datasets = "Decathlon",
-                     interp_mode=["area","area"]):
+                     reshape_mode = None, # ['padding', 'fixed_size' or None]
+                     datasets = "preprocessed_Decathlon",
+                     interp_mode=["area","nearest"]):
     
         if mode=="train" and datasets=="Decathlon":
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
@@ -29,12 +29,22 @@ class CT_Dataset(torch.utils.data.Dataset):
             self.data_list = glob.glob(os.path.join(self.data_path,"*.nii*"))
             
         elif mode=="test" and datasets=="Decathlon":
-            self.data_path = os.path.join(data_path, datasets, "imagesTs")
+            self.data_path = os.path.join(data_path+datasets, "imagesTs")
+            
+        elif mode=="train" and datasets=="preprocessed_Decathlon":
+            self.data_path = os.path.join(data_path, datasets, "imagesTr")
+            self.label_path = os.path.join(data_path, datasets, "labelsTr")
+            self.data_list = glob.glob(os.path.join(self.data_path,"*.npy*"))
+        
+        elif mode=="test" and datasets=="preprocessed_Decathlon":
+            self.data_path = os.path.join(data_path+datasets, "imagesTs")
+            
         else:
             raise ValueError("did not recognize mode: "+mode+" or datasets: "+datasets)
             
         self.reshape = reshape
         self.reshape_mode = reshape_mode
+        self.datasets = datasets
         interp_dict = {"NEAREST": cv2.INTER_NEAREST,
                        "NEAREST_EXACT": cv2.INTER_NEAREST_EXACT,
                        "LINEAR": cv2.INTER_LINEAR,
@@ -52,22 +62,30 @@ class CT_Dataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
+    
+        # imgs = os.listdir(self.data_path)[idx]
+        # labs = os.listdir(self.label_path)[idx]
         
         img_name = self.data_list[idx]
         lab_name = os.path.join(self.label_path, os.path.basename(img_name))
         
-        print("getitem")
+        # img_name = os.path.join(self.data_path, imgs)
+        # lab_name = os.path.join(self.label_path, labs)
+        
+
         # image = tio.ScalarImage(img_name)
         # label = tio.ScalarImage(lab_name)
-        img = nib.load(img_name)
-        image = img.get_fdata()
-        lab = nib.load(lab_name)
-        label = lab.get_fdata()
-        
-        image = image.astype(float)
-        im_min, im_max = np.quantile(image,[0.001,0.999])
-        image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.uint8)
-        
+        if self.datasets != "preprocessed_Decathlon":
+            img = nib.load(img_name)
+            image = img.get_fdata()
+            lab = nib.load(lab_name)
+            label = lab.get_fdata()
+            image = image.astype(float)
+            im_min, im_max = np.quantile(image,[0.001,0.999])
+            image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
+        elif self.datasets == "preprocessed_Decathlon":
+            image = np.load(img_name)
+            label = np.load(lab_name)
         
         if self.reshape_mode == "padding":
             if self.reshape is not None:
@@ -85,7 +103,7 @@ class CT_Dataset(torch.utils.data.Dataset):
                 image = resize(image)
                 label = resize(label)
         
-        if image.shape != (128,128,100):
+        if image.shape != (128,128,96):
             image = cv2.resize(image,dsize=(self.reshape[1],
                       self.reshape[0]),interpolation=self.interp_modes[0])
             label = cv2.resize(label,dsize=(self.reshape[1],
