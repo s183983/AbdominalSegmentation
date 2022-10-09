@@ -23,7 +23,7 @@ class CT_Dataset(torch.utils.data.Dataset):
                      datasets = "preprocessed_Decathlon",
                      interp_mode=["area","nearest"]):
     
-        if mode=="train" and datasets=="Decathlon":
+        if mode=="train" and (datasets=="Decathlon" or datasets=="Decathlon1"):
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
             self.label_path = os.path.join(data_path, datasets, "labelsTr")
             self.data_list = glob.glob(os.path.join(self.data_path,"*.nii*"))
@@ -66,7 +66,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         # imgs = os.listdir(self.data_path)[idx]
         # labs = os.listdir(self.label_path)[idx]
         
-        img_name = self.data_list[idx]
+        img_name = self.data_list[0]
         lab_name = os.path.join(self.label_path, os.path.basename(img_name))
         
         # img_name = os.path.join(self.data_path, imgs)

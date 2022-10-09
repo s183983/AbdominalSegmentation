@@ -240,6 +240,8 @@ class UNet3D(nn.Module):
             if i+1 < self.num_blocks:
                 x = self.upscales[i](x)
                 if self.res_mode=="cat":
+                    # print("x",x.shape)
+                    # print("skip", skip.pop().shape)
                     x = torch.cat((x,skip.pop()),dim=1)
                 elif self.res_mode=="add":
                     x += skip.pop()

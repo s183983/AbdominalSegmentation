@@ -38,10 +38,7 @@ import torch.nn as nn
 
 if __name__ ==  '__main__':
     
-    root = "../Decathlon"
-    
-    img = nib.load(os.path.join(root, "imagesTr/spleen_32.nii.gz"))
-    data = img.get_fdata()
+
     
     # image = tio.ScalarImage(os.path.join(root, "imagesTr/spleen_32.nii.gz"))
     # resize = tio.Resize([128,128,100])
@@ -50,7 +47,7 @@ if __name__ ==  '__main__':
     
     
     device = "cuda"
-    name = os.path.join("001500.pt")
+    name = os.path.join("../runs/default/checkpoint","006000.pt")
     net_name = 'default'
     device = "cuda"
     arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
@@ -58,34 +55,42 @@ if __name__ ==  '__main__':
     args = get_args(name=arg_name)
     transform_tr = False
     ds_tr = CT_Dataset(mode="train",
-                         data_path='../',
+                         data_path='../data',
                          transform=transform_tr,
                          reshape = args.training.reshape,
-                         reshape_mode = args.training.reshape_mode,
-                         datasets = args.training.datasets,
+                         reshape_mode = "padding",#args.training.reshape_mode,
+                         datasets = "preprocessed_Decathlon",#args.training.datasets,
                          interp_mode = args.training.interp_mode)
     dl_tr = torch.utils.data.DataLoader(ds_tr, batch_size=args.training.batch, drop_last=True,num_workers=0)
     dl_tr_sampled = sample_data(dl_tr)
     img, label_gt = next(dl_tr_sampled)
     img = img.to(device, dtype=torch.float)
+    label = label_gt.to(device, dtype=torch.float)
     
     """ for debugging dataloader
     for batch in dl_tr:
         img, label_gt = batch
         print(label_gt)
     """
-    
+    from functions import loss_func
+    import time
+    t = time.time()
     with torch.no_grad():
         net = UNet3D(**vars(args.unet)).to(device)
         ckpt = torch.load(name, map_location=lambda storage, loc: storage)
         net.load_state_dict(ckpt["net"])
         net.eval()
         m = nn.Sigmoid()
-        outpred = m(net(img[0,:,:,:,:].unsqueeze(0)))
-        
-    plt.subplot(1,2,1)
+        outpred = m(net(img))
+    print("forward pass took", time.time()-t)
+    
+    slice_idx = 30
+    plt.subplot(1,3,1)
+    plt.title("Input")
+    plt.imshow((np.squeeze(img[0,:,slice_idx,:,:].cpu().detach())+1)/2)
+    plt.subplot(1,3,2)
     plt.title("Prediction")
-    plt.imshow((np.squeeze(outpred[0,:,32,:,:].cpu().detach())))
-    plt.subplot(1,2,2)
+    plt.imshow((np.squeeze(outpred[0,:,slice_idx,:,:].cpu().detach())))
+    plt.subplot(1,3,3)
     plt.title("Ground truth")
-    plt.imshow((np.squeeze(label_gt[0,:,32,:,:].cpu().detach())))
+    plt.imshow((np.squeeze(label_gt[0,:,slice_idx,:,:].cpu().detach())))

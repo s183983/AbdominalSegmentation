@@ -270,4 +270,14 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
     
 
+def reshapeCT(image):
+    image = image.transpose(1,2,0)
+    im_min, im_max = np.quantile(image,[0.001,0.999])
+    image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
     
+    image = crop_CT(image, 96, image.shape[2])
+
+    if image.shape != (128,128,96):
+        image = cv2.resize(image,dsize=(128, 128), interpolation=cv2.INTER_AREA)
+    
+    return image.transpose(2,0,1)

@@ -20,13 +20,13 @@ from scipy.ndimage import gaussian_filter
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, folder, use_dicom = False, net_name=None, resize_size=None, scale_to_screen=None, parent=None):
+    def __init__(self, folder, dataset = False, net_name=None, resize_size=None, scale_to_screen=None, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         volShape = [960,960]
         self.folder = folder
         self.frame = QtWidgets.QFrame()
         self.hl = QtWidgets.QHBoxLayout()
-        self.volFrame = Annotator.fromFolder(folder, net_name, resize_size, [960,960], use_dicom)
+        self.volFrame = Annotator.fromFolder(folder, net_name, resize_size, [960,960], dataset)
 
         self.surfaceFrame = QVTKRenderWindowInteractor(self.frame)
         # self.hl.addWidget(self.volFrame)
@@ -197,14 +197,16 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
 
-    use_dicom = False    
-
-    if use_dicom:
-        folder = "../Pancreas"
-    else:
+    net_name = "default"
+    dataset = "Decathlon"    
+    
+    if dataset=="Pancreas":
+        folder = "../data/Pancreas"
+    elif dataset=="Decathlon":
         # Test folder
-        folder = "../Decathlon/imagesTr"
-
+        folder = "../data/Decathlon/imagesTr"
+    elif dataset=="Atlas":
+        folder = "../data/Atlas/images"
     use_file_dialog = False
     if use_file_dialog:
         filedialog = QtWidgets.QFileDialog()
@@ -215,7 +217,9 @@ if __name__ == "__main__":
         if filedialog.exec():
             folder = filedialog.selectedFiles()[0]
 
-    window = MainWindow(folder, use_dicom)
+    window = MainWindow(folder = folder,
+                        dataset = dataset, 
+                        net_name = net_name)
     
     window.show()
     app.exec()

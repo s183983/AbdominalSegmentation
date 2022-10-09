@@ -10,14 +10,14 @@ def get_args(name="default",dict_mode=False):
                 "unet": {
                     "block": "ffmmm", #one of ['f','m']. m=MBConv (seperated conv),f=FusedMBConv (normal conv)
                     "act": "silu", #one of ['silu','relu']
-                    "res_mode": "add", #one of ['cat', 'add']
+                    "res_mode": "cat", #one of ['cat', 'add']
                     "init_mode": "effecientnetv2", #uses the init. from effecientnetv2 paper if 'effecientnetv2'
                     "downscale_mode": "avgpool", #one of ['maxpool','avgpool','conv']
                     "upscale_mode": "NDlinear", #one of ['nearest','bilinear','bicubic','trilinear','tconv','NDlinear']
                     #'bilinear' is only for 2D, "trilinear" is only for 3D. Will automatically find the correct one with 'NDlinear'
                     "input_channels": 1, #number of excepted input channels. E.g. 3 for RGB input, 1 for greyscale.
                     "num_blocks": 5, #One more than number of 2x downscales/upscales
-                    "num_c": [4,8,8,16,16], #Number of channels in the blocks at different scales
+                    "num_c": [4,8,16,32,64], #Number of channels in the blocks at different scales
                     "num_repeat": [1,2,2,4,4], #Number of repetitions of blocks at different scales
                     "expand_ratio": [1,4,4,6,6], #EffecientNetv2 expansion ratio in the blocks at different scales
                     "SE": [0,0,1,1,1],#bool defining if squeeze-and-excite layer be used at the end of blocks at different scales
@@ -27,10 +27,10 @@ def get_args(name="default",dict_mode=False):
                     "reshape": [128,128,96], #reshape size for batch. If int instead of list then same reshape is used for spacial dimensions
                     "reshape_mode": None, # ['padding', 'fixed_size' or None]
                     "interp_mode": ["area","nearest"], #interpolation mode for rescaling of images
-                    "max_iter": 1500, #Number of training iterations to complete training
-                    "batch": 2, #Batch size
+                    "max_iter": 10000, #Number of training iterations to complete training
+                    "batch": 4, #Batch size
                     "lr": 1e-4,#Learning rate
-                    "weight_decay": 1e-5,#Adam optimizer weight decay
+                    "weight_decay": 1e-4,#Adam optimizer weight decay
                     "augment": False,
                     "aug_rampup": 10000, 
                     "recon_mode": "BCE", #one of ["L1", "L2", "BCE"]
@@ -45,6 +45,9 @@ def get_args(name="default",dict_mode=False):
     if name is not None and name!="default":
         if name=="unet":
             args_mod = {}
+        elif name=="train1":
+            args_mod = {"training":{"datasets": "Decathlon1"}}
+            args_mod["training"]["reshape_mode"] = 'padding'
         else:
             raise ValueError('Invalid model name')
             

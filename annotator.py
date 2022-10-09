@@ -13,8 +13,6 @@ import PyQt5.QtGui
 import numpy as np
 import random
 from PIL import Image
-# from config import (get_args, update_args)
-# from model_unet import (AbstractUNet, AbstractDownNet)
 from PIL.ImageQt import ImageQt 
 import qimage2ndarray
 import os
@@ -25,7 +23,15 @@ import cv2
 import imutils
 import SimpleITK as sitk
 from scipy.ndimage import zoom
+from functions import reshapeCT
+from config import (
+    get_args,
+    update_args,
+    )
+import argparse
+from model_unet_3d import UNet3D
 import utils
+import torch.nn as nn
 
 
   
@@ -135,10 +141,10 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         print(self.introText(False))
     
     @classmethod
-    def fromFolder(cls, folder_name, net_name, resize_size, resize_shape, use_dicom = False):
+    def fromFolder(cls, folder_name, net_name, resize_size, resize_shape, dataset):
         print("folder init")
         
-        if use_dicom:
+        if dataset=="Pancreas":
             ct_list = glob.glob(os.path.join(folder_name,"data","PANCREAS_**"))
             name = ct_list[0]
             ct_vol = utils.read_dicom_files_carefully(name)
@@ -193,30 +199,26 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         annotator.annotationsFilename = os.path.join("Decathlon/labelsTr",os.path.basename(name))
         
         #TODO - fix network
-        """ For using segmentation network
+        """ For using segmentation network"""
         device = "cuda"
-        path = "C:/Users/lowes/OneDrive/Skrivebord/DTU/8_semester/General_Interactive_Segmentation/runs"
-        name = os.path.join(path, net_name+".pt")
+        path = os.path.join("../runs",net_name,"checkpoint","*.pt")
+        nets = glob.glob(path)
+        nets.sort()
+        print(nets)
+        net_path = nets[-1]
         
-        # arg_name = ''.join(filter(lambda x: not x.isdigit(),net_name))
-        arg_name = net_name.split('_')[0]
-        args = get_args(name=arg_name)
-        annotator.recon_mode = args.training.recon_mode
-        # args = get_args(name=arg_name[:-1])
+        arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
+        #args = get_args(name=arg_name[:-1])
+        args = get_args(name=net_name)
 
 
-        net = AbstractUNet(args).to(device)
-      
-
-
-        ckpt = torch.load(name, map_location=lambda storage, loc: storage)
-        #args = ckpt['args']
-        #args = update_args(args)
+        net = UNet3D(**vars(args.unet)).to(device)
+        ckpt = torch.load(net_path, map_location=lambda storage, loc: storage)
         net.load_state_dict(ckpt["net"])
         annotator.net = net
         annotator.net.eval()
         annotator.device = device
-        """
+
         print("CT shape",ct_vol.shape)
         print("im shape",im.shape)
         annotator.ct_list = ct_list
@@ -225,7 +227,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         annotator.resize_shape = resize_shape
         annotator.spacing=spacing
         annotator.cur_slice = 0  
-        annotator.use_dicom = use_dicom
+        annotator.dataset = dataset
         annotator.calculateSphere()
         annotator.predict() 
         annotator.show_slice()
@@ -651,28 +653,48 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     
     def predict(self):
         
+        thresh = 0.5
+        vol = self.ct_vol.astype(np.float32)/255.0*2.0 - 1.0
+        
+        vol_reshaped = reshapeCT(vol)
+        
+        vol_t = torch.from_numpy(vol_reshaped).to(self.device).type(torch.cuda.FloatTensor)
+        ss = nn.Sigmoid()
+        print(vol_t.shape)
+        with torch.no_grad():
+            seg = ss(self.net(vol_t.unsqueeze(0).unsqueeze(0)))
+        
+        seg[seg>thresh] = 1
+        pred = seg[0][0].cpu().numpy()
+        
         #TODO - predict with network
-        if self.use_dicom:
+        if self.dataset=="Pancreas":
             file_num = ''.join([s for s in os.path.basename(self.filename) if s.isdigit()])
-            label_name = os.path.join("Pancreas","labels","TCIA_pancreas_labels-02-05-2017","label"+file_num+".nii.gz")
+            label_name = os.path.join("data/Pancreas","labels","TCIA_pancreas_labels-02-05-2017","label"+file_num+".nii.gz")
 
             sitk_t1 = sitk.ReadImage(label_name)
             label_vol = sitk.GetArrayFromImage(sitk_t1)
-        else:
-            label = os.path.join("../Decathlon/labelsTr",os.path.basename(self.filename))
-            
+        elif self.dataset=="Decathlon":
+            label = os.path.join("../data/Decathlon/labelsTr",os.path.basename(self.filename))
             tmp = sitk.ReadImage(label)
-    
-            # and access the numpy array:
+            label_vol = sitk.GetArrayFromImage(tmp)
+        elif self.dataset=="Atlas":
+            name = os.path.basename(self.filename).split('.')[0]
+            name += "_seg.nii.gz"
+            label = os.path.join("../data/Atlas/labels",name)
+            tmp = sitk.ReadImage(label)
             label_vol = sitk.GetArrayFromImage(tmp)
         
       
         # if not s0==s1==s2:
         #     pred = zoom(pred,self.scales)
         
-        self.cur_slice = len(label_vol)-1 # pred.sum(2).sum(1).nonzero()[0][0]
-        self.pred = label_vol
         
+        
+        self.cur_slice = len(label_vol)-1 # pred.sum(2).sum(1).nonzero()[0][0]
+        self.pred = pred
+    
+    
     def getPrediction(self):
         prediction = self.pred.copy()
         return prediction

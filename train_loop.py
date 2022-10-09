@@ -52,7 +52,7 @@ def train_classifier(args, net, optim_net, start_iter,
     pbar = tqdm(range(args.training.max_iter), initial=start_iter, dynamic_ncols=True, smoothing=0.01)
     
     vali_every_ite = 200
-    n_vali = 100//args.training.batch
+    n_vali = max(2//args.training.batch,1)
     save_vali_every = 200
     ite_skeleton_p = 0
     n_vali_ite = int(np.ceil(ite_skeleton_p*n_vali))
@@ -79,23 +79,24 @@ def train_classifier(args, net, optim_net, start_iter,
         if i > args.training.max_iter:
             print("Done!")
             break
-        
+        net.train()
         img, label_gt = next(dl_tr)
+        # print("fetched data")
         img = img.to(device, dtype=torch.float)
         label_gt = label_gt.to(device, dtype=torch.float)
 
         
         label_gt = (label_gt>eps).type(torch.float)        
         label_pred = net(img)
-
+        # print("doing pred")
         loss_net = loss_func(label_gt,label_pred,
                              recon_mode=args.training.recon_mode,
                              weight_mode=args.training.weight_mode_loss)
-
+        # print("pred done")
         net.zero_grad()
         loss_net.backward()
         optim_net.step()
-        
+        # print("optimized")
         if i%vali_every_ite==0 and args.training.augment:
             if args.training.aug_rampup is not None:
                 if i<=args.training.aug_rampup:
@@ -107,6 +108,7 @@ def train_classifier(args, net, optim_net, start_iter,
                     dl_tr = sample_data(dl_tr)
         
         if (i%vali_every_ite)==0:
+            net.eval()
             with torch.no_grad():
                 loss_vali = 0
                 loss_vali_ite = 0
@@ -261,7 +263,7 @@ if __name__ == "__main__":
         max_p=0.6,rampup_ite=args.training.aug_rampup) if args.training.augment else None
     
     ds_tr = CT_Dataset(mode="train",
-                         data_path='../',
+                         data_path='../data',
                          transform=transform_tr,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
@@ -269,17 +271,17 @@ if __name__ == "__main__":
                          interp_mode = args.training.interp_mode)
 
     ds_va = CT_Dataset(mode="train",
-                         data_path='../',
+                         data_path='../data',
                          transform=transform_tr,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
                          datasets = args.training.datasets,
                          interp_mode = args.training.interp_mode)
     ds_te = None
+            
     
-    
-    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch, drop_last=True,num_workers=1)
-    dl_va = torch.utils.data.DataLoader(ds_va,batch_size=args.training.batch, drop_last=True,num_workers=1)
+    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch, drop_last=True,num_workers=2)
+    dl_va = torch.utils.data.DataLoader(ds_va,batch_size=args.training.batch, drop_last=True,num_workers=2)
     
     dl_tr = sample_data(dl_tr)
     dl_va = sample_data(dl_va)
