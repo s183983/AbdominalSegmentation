@@ -15,6 +15,7 @@ from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 import pydicom as dcm
 from pydicom.errors import InvalidDicomError
 from vtk.util.numpy_support import numpy_to_vtk
+from vtkmodules.vtkCommonColor import vtkNamedColors
 from annotator import Annotator
 from scipy.ndimage import gaussian_filter
 
@@ -175,18 +176,56 @@ class MainWindow(QtWidgets.QMainWindow):
         surface = vtk.vtkMarchingCubes()
         surface.SetInputData(imgdat)
         surface.ComputeNormalsOn()
-        surface.SetValue(0, 0.9 )
+        surface.SetValue(0, 0.8 )
         surface.Update()
         
+        
+        surfaceTriangulator = vtk.vtkTriangleFilter()
+        surfaceTriangulator.SetInputData(surface.GetOutput())
+        surfaceTriangulator.PassLinesOn()
+        surfaceTriangulator.PassVertsOn()
+        surfaceTriangulator.Update()
+        
+        smoother = vtk.vtkSmoothPolyDataFilter()
+        smoother.SetInputConnection(surfaceTriangulator.GetOutputPort())
+        smoother.SetNumberOfIterations(100)
+        smoother.SetRelaxationFactor(0.5)
+        smoother.FeatureEdgeSmoothingOff()
+        smoother.BoundarySmoothingOn()
+        smoother.Update()
+        
+        smooth_butterfly = vtk.vtkButterflySubdivisionFilter()
+        smooth_butterfly.SetNumberOfSubdivisions(3)
+        smooth_butterfly.SetInputConnection(surface.GetOutputPort())
+        smooth_butterfly.Update()
+        
+        smoother = vtk.vtkWindowedSincPolyDataFilter()
+        smoother.SetInputConnection(smooth_butterfly.GetOutputPort())
+        smoother.SetNumberOfIterations(15);
+        smoother.BoundarySmoothingOff();
+        smoother.FeatureEdgeSmoothingOff();
+        smoother.SetFeatureAngle(60.0);
+        smoother.SetPassBand(0.1);
+        smoother.NonManifoldSmoothingOn();
+        smoother.NormalizeCoordinatesOn();
+        smoother.Update()
+        
+
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(surface.GetOutputPort())
+        mapper.SetInputConnection(smoother.GetOutputPort())
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
+        # actor.GetProperty().SetRenderLinesAsTubes(1)
+        # actor.GetProperty().SetEdgeVisibility(1);
+        # actor.GetProperty().SetEdgeColor(0,0,0);
+
     
         self.ren.RemoveActor(self.actor)
         self.ren.AddActor(actor)
         self.iren_3d.Initialize()
+        nc = vtkNamedColors()
+        self.ren.SetBackground((200/255,162/255,200/255))
 
     def mouseReleaseEvent(self, event):
         self.volFrame.mouseReleaseEvent1(event)

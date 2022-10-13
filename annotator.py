@@ -159,6 +159,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             spacing = sitk_t1.GetSpacing()
             ct_vol = sitk.GetArrayFromImage(sitk_t1)
         
+        ct_vol = np.flip(ct_vol,0)
         ct_vol[ct_vol<-1024] = -1024
         ct_vol[ct_vol>1024] = 1024
         ct_vol = (255*(ct_vol - np.min(ct_vol))/np.ptp(ct_vol)).astype(np.uint8)
@@ -491,7 +492,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
 
         # self.update_pred()
         self.reset_current_image()
-        scroll = np.sign(event.angleDelta().y())
+        scroll = -np.sign(event.angleDelta().y())
         new_slice = self.cur_slice + scroll
         if 0 < new_slice < self.ct_shape[0]:      
             self.cur_slice = new_slice
@@ -607,7 +608,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         im = self.ct_vol[self.cur_slice]
         im = cv2.resize(im,self.resize_shape)
         x = round(self.resize_shape[0]*0.9)
-        y = 10
+        y = 15
         cv2.putText(im,
                     f"Slice {self.cur_slice+1}/{self.n_slices}",
                     (x,y),
@@ -659,16 +660,16 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         
         self.pred[self.cur_slice][annotations[:,:,0]>0] = 1
         self.reset_current_image()
-    
+        
     def predict(self):
         
         # tmp_name = self.vol_name.replace(self.dataset,"preprocessed_"+self.dataset)
         # pre_vol = np.load(tmp_name.replace('nii.gz', "npy")) / 255.0*2.0 - 1.0
         
-        thresh = 0.5
+        thresh = 0.1
         vol = self.ct_vol.astype(np.float32)/255.0*2.0 - 1.0
         
-        vol_reshaped = reshapeCT(vol).transpose(0,2,1)
+        vol_reshaped = np.flipud(reshapeCT(vol).transpose(0,2,1)).copy()
         
         vol_t = torch.from_numpy(vol_reshaped).to(self.device, dtype=torch.float)
         ss = nn.Sigmoid()
@@ -681,7 +682,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         seg[seg>=thresh] = 1
         seg[seg<thresh] = 0
         pred = seg[0][0].cpu().numpy()
-        pred = pred.transpose(0,2,1)
+        pred = np.flipud(pred.transpose(0,2,1))
         print("Prediction finished")
         #TODO - predict with network
         if self.dataset=="Pancreas":
@@ -711,10 +712,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         
         pred_ = cv2.resize(pred_,dsize=(self.ct_shape[1],self.ct_shape[2]), interpolation=cv2.INTER_NEAREST)
         pred_ = pred_.transpose(2,0,1)
-        self.cur_slice = len(pred_)-1 # pred.sum(2).sum(1).nonzero()[0][0]
         self.pred = pred_.astype(int)
     
-    
+        
     def getPrediction(self):
         prediction = self.pred.copy()
         return prediction
