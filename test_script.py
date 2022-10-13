@@ -218,6 +218,8 @@ ax[0,1].imshow(np.squeeze(aug_image[:,:,:,50]))
 ax[1,0].imshow(np.squeeze(label[:,:,:,50]))
 ax[1,1].imshow(np.squeeze(aug_label[:,:,:,50]))
 #%%
+aug = get_augmentation((128, 128, 96))
+#%%
 from functions import (
     num_of_params,
     sample_data,
@@ -232,7 +234,7 @@ image = np.load("../data/preprocessed_Decathlon/imagesTr/pancreas_001.npy")
 mask = np.load("../data/preprocessed_Decathlon/labelsTr/pancreas_001.npy")
 
 
-aug = get_augmentation((128, 128, 96))
+
 data = {'image': image, 'mask': mask}
 aug_data = aug(**data)
 aug_image = aug_data['image']

@@ -18,7 +18,7 @@ class CT_Dataset(torch.utils.data.Dataset):
 
     def __init__(self, mode="train",
                      data_path="../data",
-                     transform=True,
+                     transform=None,
                      reshape=[128,128,96],
                      reshape_mode = None, # ['padding', 'fixed_size' or None]
                      datasets = "preprocessed_Decathlon",
@@ -53,7 +53,11 @@ class CT_Dataset(torch.utils.data.Dataset):
         self.reshape = reshape
         self.reshape_mode = reshape_mode
         self.datasets = datasets
-        self.transform = transform
+        if transform!=None:
+            self.transform = get_augmentation((reshape[0], reshape[1], reshape[2]))
+        else: 
+            self.transform = transform
+            
         interp_dict = {"NEAREST": cv2.INTER_NEAREST,
                        "NEAREST_EXACT": cv2.INTER_NEAREST_EXACT,
                        "LINEAR": cv2.INTER_LINEAR,
@@ -128,10 +132,9 @@ class CT_Dataset(torch.utils.data.Dataset):
         #data = img.get_fdata()
 
 
-        if self.transform is True:
-            aug = get_augmentation((128, 128, 96))
+        if self.transform is not None:
             data = {"image": image, "label": label}
-            aug_batch = aug(**data)
+            aug_batch = self.transform(**data)
         else:
             aug_batch = {"image": image, "label": label}
         
