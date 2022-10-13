@@ -48,6 +48,9 @@ def get_args(name="default",dict_mode=False):
         elif name=="train1":
             args_mod = {"training":{"datasets": "Decathlon1"}}
             args_mod["training"]["reshape_mode"] = 'padding'
+        elif name=="just_learn":
+            args_mod = {"training":{"datasets": "preprocessed_Decathlon"}}
+            args_mod["training"]["max_iter"] = 15000
         else:
             raise ValueError('Invalid model name')
             

@@ -66,7 +66,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         # imgs = os.listdir(self.data_path)[idx]
         # labs = os.listdir(self.label_path)[idx]
         
-        img_name = self.data_list[0]
+        img_name = self.data_list[idx]
         lab_name = os.path.join(self.label_path, os.path.basename(img_name))
         
         # img_name = os.path.join(self.data_path, imgs)

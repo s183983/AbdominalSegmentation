@@ -13,6 +13,9 @@ im_list = glob.glob(os.path.join(im_path,"*.nii*"))
 save_dir_ims = "../data/preprocessed_Decathlon/imagesTr"
 save_dir_labs = "../data/preprocessed_Decathlon/labelsTr"
 
+crop_size = [192,192,96]
+
+diffs = []
 
 for img_name in tqdm(im_list):
     
@@ -23,6 +26,17 @@ for img_name in tqdm(im_list):
     image = img.get_fdata()
     lab = nib.load(lab_name)
     label = lab.get_fdata()
+    label_shape = label.shape
+    nnz=np.array(label.nonzero())
+    spleen_mean = np.array(label.nonzero()).mean(1).round().astype(int)
+    # diff = nnz.max(1)-nnz.min(1)
+    # diffs.append(diff)
+    
+    label_crop = label[
+                        spleen_mean[0]-crop_size[0]//2 : spleen_mean[0]-crop_size[0]//2,
+                        spleen_mean[1]-crop_size[1]//2 : spleen_mean[1]-crop_size[1]//2,
+                        min(spleen_mean[2]-crop_size[2]//2,0):max(spleen_mean[2]+crop_size[2]//2,label_shape[2])
+                        ]
     
     image = image.astype(float)
     im_min, im_max = np.quantile(image,[0.001,0.999])
