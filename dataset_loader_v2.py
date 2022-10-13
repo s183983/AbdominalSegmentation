@@ -17,7 +17,7 @@ class CT_Dataset(torch.utils.data.Dataset):
 
     def __init__(self, mode="train",
                      data_path="../data",
-                     transform=None,
+                     transform=True,
                      reshape=[128,128,96],
                      reshape_mode = None, # ['padding', 'fixed_size' or None]
                      datasets = "preprocessed_Decathlon",
@@ -42,9 +42,16 @@ class CT_Dataset(torch.utils.data.Dataset):
         else:
             raise ValueError("did not recognize mode: "+mode+" or datasets: "+datasets)
             
+            
+        transforms_dict = {tio.RandomAffine(): 3,
+                           tio.RandomElasticDeformation(): 1,
+                           tio.RandomFlip(): 3
+                           }  # Using 3 and 1 as probabilities would have the same effect
+            
         self.reshape = reshape
         self.reshape_mode = reshape_mode
         self.datasets = datasets
+        self.transform = transform
         interp_dict = {"NEAREST": cv2.INTER_NEAREST,
                        "NEAREST_EXACT": cv2.INTER_NEAREST_EXACT,
                        "LINEAR": cv2.INTER_LINEAR,
@@ -57,7 +64,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         
 
     def __len__(self):
-        return len(self.data_path)
+        return len(self.data_list)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -117,9 +124,18 @@ class CT_Dataset(torch.utils.data.Dataset):
         #image = image.astype('float64')
         #labels = nib.load(lab_name)
         #data = img.get_fdata()
-        image = torch.tensor(image).permute(2,0,1)/255*2-1#/255*2-1
+
+
+        if self.transform is not None:
+            transform = tio.OneOf(transforms_dict)
+            aug_batch = self.transform(image=image,label=label)
+        else:
+            aug_batch = {"image": image,"label": label}
+        
+        
+        image = torch.tensor(aug_batch["image"]).permute(2,0,1)/255*2-1#/255*2-1
         image = image.unsqueeze(0)
-        label = torch.tensor(label).permute(2,0,1).unsqueeze(0)
+        label = torch.tensor(aug_batch["label"]).permute(2,0,1).unsqueeze(0)
         
         # if not isinstance(image.dtype, torch.float):
         #     image = image.type(torch.float)

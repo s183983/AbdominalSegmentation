@@ -25,10 +25,10 @@ with HiddenPrints():
 
 if __name__ ==  '__main__':
     device = "cuda"
-    ROOT = "C:/Users/lakri/Desktop/DTU/9.semester/Special Course/"
+    ROOT = "../"
     MODEL = 'runs/default/checkpoint/'
     check_point_name = os.path.join(ROOT, MODEL)
-    name = os.path.join(check_point_name,"001500.pt")
+    name = os.path.join(MODEL, "006000.pt")
     net_name = 'default'
     device = "cuda"
     arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
@@ -36,26 +36,36 @@ if __name__ ==  '__main__':
     args = get_args(name=arg_name)
     transform_tr = False
     ds_tr = CT_Dataset(mode="train",
-                         data_path='C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/',
+                         data_path="../data",
                          transform=transform_tr,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
                          datasets = args.training.datasets,
                          interp_mode = args.training.interp_mode)
-    dl_tr = torch.utils.data.DataLoader(ds_tr, batch_size=args.training.batch, drop_last=True,num_workers=4)
+    dl_tr = torch.utils.data.DataLoader(ds_tr, batch_size=args.training.batch, drop_last=True,num_workers=2)
     dl_tr = sample_data(dl_tr)
+    #%%
     img, label_gt = next(dl_tr)
+    # for batch in dl_tr:
+    #     img, label_gt = batch
+
     img = img.to(device, dtype=torch.float)
-    
     with torch.no_grad():
         net = UNet3D(**vars(args.unet)).to(device)
         ckpt = torch.load(name, map_location=lambda storage, loc: storage)
         net.load_state_dict(ckpt["net"])
         net.eval()
         m = nn.Sigmoid()
-        outpred = m(net(img[0,:,:,:,:].unsqueeze(0)))
+        outpred = m(net(img))
         
-    plt.imshow((np.squeeze(outpred[0,:,10,:,:].cpu().detach()))>0.8)
+    s_n = 50
+    fig, ax = plt.subplots(1,3)    
+    ax[0].imshow((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))
+    ax[0].set_title('output pred')
+    ax[1].imshow((np.squeeze(label_gt[1,:,s_n,:,:].cpu().detach())).permute(1,0))
+    ax[1].set_title('GT')
+    ax[2].imshow((np.squeeze(img[1,:,s_n,:,:].cpu().detach())).permute(1,0))
+    ax[2].set_title('GT IMG')
 #%%
 # transform_tr = False
 # ds_tr = CT_Dataset(mode="train",

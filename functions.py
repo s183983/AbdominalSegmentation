@@ -149,7 +149,7 @@ def loss_func(gt,
         bce_func = torch.nn.BCEWithLogitsLoss(reduction='none')
         recon_loss = (bce_func(pred,gt.bernoulli())*weight).mean()
     else:
-        raise ValueError("Recon_mode must be one of ['L1', 'L2', 'BCE'] not ",recon_mode)
+        raise ValueError("Recon_mode must be one of ['L1', 'L2', 'BCE'] not ", recon_mode)
         
     return recon_loss
 
