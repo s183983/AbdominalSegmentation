@@ -43,7 +43,7 @@ class CT_Dataset(torch.utils.data.Dataset):
             raise ValueError("did not recognize mode: "+mode+" or datasets: "+datasets)
             
             
-        transforms_dict = {tio.RandomAffine(): 3,
+        self.transforms_dict = {tio.RandomAffine(): 3,
                            tio.RandomElasticDeformation(): 1,
                            tio.RandomFlip(): 3
                            }  # Using 3 and 1 as probabilities would have the same effect
@@ -127,8 +127,8 @@ class CT_Dataset(torch.utils.data.Dataset):
 
 
         if self.transform is not None:
-            transform = tio.OneOf(transforms_dict)
-            aug_batch = self.transform(image=image,label=label)
+            transform = tio.OneOf(self.transforms_dict)
+            aug_batch = transform(image=image,label=label)
         else:
             aug_batch = {"image": image,"label": label}
         
