@@ -8,6 +8,7 @@ from pydicom.errors import InvalidDicomError
 import pydicom as dcm
 import warnings
 import sys
+import volumentations as V
 
 class HiddenPrints:
     def __enter__(self):
@@ -176,7 +177,7 @@ def requires_grad(model, flag=True):
         p.requires_grad = flag
         
         
-def get_transform_tr(ite=None,max_p=0.6,rampup_ite=10000):
+def get_transform_tr(ite=None,max_p=0.6,rampup_ite=1500):
     if ite is None:
         ite = rampup_ite
     
@@ -186,13 +187,28 @@ def get_transform_tr(ite=None,max_p=0.6,rampup_ite=10000):
         p = max_p*min(1,ite/rampup_ite)
     transform_tr = transform_tr = A.Compose([
             A.HorizontalFlip(p=0.5),
-            A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=p),
+            A.VerticalFlip(p=0.5),
+            # A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=p),
             A.ShiftScaleRotate(shift_limit=0, scale_limit=(0.0, 0.2), rotate_limit=15, p=p*0.8, 
                                border_mode=cv2.BORDER_CONSTANT),
             A.PiecewiseAffine(scale=(0.01, 0.03),p=p*0.5),
             A.ColorJitter(brightness=0.15,p=p),
         ])
     return transform_tr
+
+def get_augmentation(patch_size):
+    return V.Compose([
+        #V.ElasticTransform((0, 0.25), interpolation=2, p=0.1),
+        V.Flip(0, p=0.3),
+        V.Flip(1, p=0.3),
+        V.RandomCropFromBorders(crop_2_min=0, crop_2_max=0, p=0.5),
+        V.Resize(patch_size, interpolation=1, resize_type=0, always_apply=True, p=1.0),
+        #V.Flip(2, p=0.5),
+        #V.Rotate((0, 0), (0, 0), (-90, 90), p=1),
+        V.RandomRotate90((0, 1), p=0.3),
+        V.RandomGamma(gamma_limit=(80, 120), p=0.2),
+        V.GaussianNoise(var_limit=(0, 5), p=0.2),
+    ], p=0.8)
 
 def find_all_files(file_path):
     print(f'reading file list in {file_path}')

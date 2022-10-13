@@ -11,6 +11,7 @@ from functions import crop_CT
 import cv2
 import numpy as np
 import glob
+from functions import get_augmentation
 
 class CT_Dataset(torch.utils.data.Dataset):
     
@@ -43,10 +44,11 @@ class CT_Dataset(torch.utils.data.Dataset):
             raise ValueError("did not recognize mode: "+mode+" or datasets: "+datasets)
             
             
-        self.transforms_dict = {tio.RandomAffine(): 3,
-                           tio.RandomElasticDeformation(): 1,
-                           tio.RandomFlip(): 3
-                           }  # Using 3 and 1 as probabilities would have the same effect
+        # self.transforms_dict = {tio.RandomAffine(p=0.25),
+        #                    tio.RandomElasticDeformation(p=0.25),
+        #                    tio.RandomFlip((0, 1, 2), p=1)
+        #                    }
+
             
         self.reshape = reshape
         self.reshape_mode = reshape_mode
@@ -126,11 +128,12 @@ class CT_Dataset(torch.utils.data.Dataset):
         #data = img.get_fdata()
 
 
-        if self.transform is not None:
-            transform = tio.OneOf(self.transforms_dict)
-            aug_batch = transform(image=image,label=label)
+        if self.transform is True:
+            aug = get_augmentation((128, 128, 96))
+            data = {"image": image, "label": label}
+            aug_batch = aug(**data)
         else:
-            aug_batch = {"image": image,"label": label}
+            aug_batch = {"image": image, "label": label}
         
         
         image = torch.tensor(aug_batch["image"]).permute(2,0,1)/255*2-1#/255*2-1

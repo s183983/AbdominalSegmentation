@@ -14,7 +14,8 @@ from functions import (
     requires_grad,
     get_transform_tr,
     load_state_dict_loose,
-    crop_CT
+    crop_CT,
+    get_augmentation
     )
 from config import (
     get_args,
@@ -24,7 +25,7 @@ from model_unet_3d import UNet3D
 import cv2
 
 
-root = "C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/"
+#root = "C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/"
 #%%
 
 img = nib.load(root + "labels/label0001.nii")
@@ -198,3 +199,47 @@ lab = nib.load(lab_name)
 label = lab.get_fdata()
 #%%
 plt.imshow(label[:,:,69]*255)
+#%%
+image = np.load(root+"preprocessed_Decathlon/imagesTr/pancreas_001.npy")
+label = np.load(root+"preprocessed_Decathlon/labelsTr/pancreas_001.npy")
+image = np.expand_dims(image,0)
+label = np.expand_dims(label,0)
+
+transforms_dict = {tio.RandomAffine(p=0.25),
+                   tio.RandomElasticDeformation(p=0.25),
+                   tio.RandomFlip((0, 1, 2), p=1)
+                   }
+transform = tio.Compose(transforms_dict)
+aug_image = transform(image)
+aug_label = transform(label)
+fig, ax =  plt.subplots(2,2)
+ax[0,0].imshow(np.squeeze(image[:,:,:,50]))
+ax[0,1].imshow(np.squeeze(aug_image[:,:,:,50]))
+ax[1,0].imshow(np.squeeze(label[:,:,:,50]))
+ax[1,1].imshow(np.squeeze(aug_label[:,:,:,50]))
+#%%
+from functions import (
+    num_of_params,
+    sample_data,
+    loss_func,
+    requires_grad,
+    get_transform_tr,
+    load_state_dict_loose,
+    crop_CT,
+    get_augmentation
+    )
+image = np.load("../data/preprocessed_Decathlon/imagesTr/pancreas_001.npy")
+mask = np.load("../data/preprocessed_Decathlon/labelsTr/pancreas_001.npy")
+
+
+aug = get_augmentation((128, 128, 96))
+data = {'image': image, 'mask': mask}
+aug_data = aug(**data)
+aug_image = aug_data['image']
+aug_mask = aug_data['mask']
+s = 50
+fig, ax =  plt.subplots(2,2)
+ax[0,0].imshow(np.squeeze(image[:,:,s]))
+ax[0,1].imshow(np.squeeze(aug_image[:,:,s]))
+ax[1,0].imshow(np.squeeze(mask[:,:,s]))
+ax[1,1].imshow(np.squeeze(aug_mask[:,:,s]))
