@@ -197,7 +197,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
 
-    net_name = "default"
+    net_name = "just_learn"
     dataset = "Decathlon"    
     
     if dataset=="Pancreas":

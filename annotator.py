@@ -146,16 +146,16 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         
         if dataset=="Pancreas":
             ct_list = glob.glob(os.path.join(folder_name,"data","PANCREAS_**"))
-            name = ct_list[0]
-            ct_vol = utils.read_dicom_files_carefully(name)
+            vol_name = ct_list[0]
+            ct_vol = utils.read_dicom_files_carefully(vol_name)
             spacing = [1,1,1]
             
         else:
             
             ct_list = glob.glob(os.path.join(folder_name,"*.nii.gz"))
             # random.shuffle(ct_list)
-            name = ct_list.pop(2)
-            sitk_t1 = sitk.ReadImage(name)
+            vol_name = ct_list.pop(2)
+            sitk_t1 = sitk.ReadImage(vol_name)
             spacing = sitk_t1.GetSpacing()
             ct_vol = sitk.GetArrayFromImage(sitk_t1)
         
@@ -196,7 +196,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         imagePix = PyQt5.QtGui.QPixmap(qimage)
         annotator = Annotator(imagePix.size(), ct_vol.shape, resize_size)
         annotator.imagePix = imagePix
-        annotator.annotationsFilename = os.path.join("Decathlon/labelsTr",os.path.basename(name))
+        annotator.annotationsFilename = os.path.join("Decathlon/labelsTr",os.path.basename(vol_name))
         
         #TODO - fix network
         """ For using segmentation network"""
@@ -204,8 +204,8 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         path = os.path.join("../runs",net_name,"checkpoint","*.pt")
         nets = glob.glob(path)
         nets.sort()
-        print(nets)
         net_path = nets[-1]
+        print("net_name", net_path)
         
         arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
         #args = get_args(name=arg_name[:-1])
@@ -215,18 +215,19 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         net = UNet3D(**vars(args.unet)).to(device)
         ckpt = torch.load(net_path, map_location=lambda storage, loc: storage)
         net.load_state_dict(ckpt["net"])
-        annotator.net = net
+        annotator.net = net.to(device)
         annotator.net.eval()
         annotator.device = device
-
+        
         print("CT shape",ct_vol.shape)
         print("im shape",im.shape)
         annotator.ct_list = ct_list
-        annotator.filename = name
+        annotator.vol_name = vol_name
         annotator.ct_vol = ct_vol
         annotator.resize_shape = resize_shape
         annotator.spacing=spacing
         annotator.cur_slice = 0  
+        annotator.n_slices = ct_vol.shape[0]
         annotator.dataset = dataset
         annotator.calculateSphere()
         annotator.predict() 
@@ -605,6 +606,14 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     def show_slice(self):
         im = self.ct_vol[self.cur_slice]
         im = cv2.resize(im,self.resize_shape)
+        x = round(self.resize_shape[0]*0.9)
+        y = 10
+        cv2.putText(im,
+                    f"Slice {self.cur_slice+1}/{self.n_slices}",
+                    (x,y),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    255)
 
         gray = im.copy() # check whether needed
         
@@ -653,33 +662,40 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     
     def predict(self):
         
+        # tmp_name = self.vol_name.replace(self.dataset,"preprocessed_"+self.dataset)
+        # pre_vol = np.load(tmp_name.replace('nii.gz', "npy")) / 255.0*2.0 - 1.0
+        
         thresh = 0.5
         vol = self.ct_vol.astype(np.float32)/255.0*2.0 - 1.0
         
-        vol_reshaped = reshapeCT(vol)
+        vol_reshaped = reshapeCT(vol).transpose(0,2,1)
         
-        vol_t = torch.from_numpy(vol_reshaped).to(self.device).type(torch.cuda.FloatTensor)
+        vol_t = torch.from_numpy(vol_reshaped).to(self.device, dtype=torch.float)
         ss = nn.Sigmoid()
-        print(vol_t.shape)
+        print("Predicting")
         with torch.no_grad():
-            seg = ss(self.net(vol_t.unsqueeze(0).unsqueeze(0)))
+            seg = self.net(vol_t.unsqueeze(0).unsqueeze(0))
+            print("did seg")
+            seg = ss(seg)
         
-        seg[seg>thresh] = 1
+        seg[seg>=thresh] = 1
+        seg[seg<thresh] = 0
         pred = seg[0][0].cpu().numpy()
-        
+        pred = pred.transpose(0,2,1)
+        print("Prediction finished")
         #TODO - predict with network
         if self.dataset=="Pancreas":
-            file_num = ''.join([s for s in os.path.basename(self.filename) if s.isdigit()])
+            file_num = ''.join([s for s in os.path.basename(self.vol_name) if s.isdigit()])
             label_name = os.path.join("data/Pancreas","labels","TCIA_pancreas_labels-02-05-2017","label"+file_num+".nii.gz")
 
             sitk_t1 = sitk.ReadImage(label_name)
             label_vol = sitk.GetArrayFromImage(sitk_t1)
         elif self.dataset=="Decathlon":
-            label = os.path.join("../data/Decathlon/labelsTr",os.path.basename(self.filename))
+            label = os.path.join("../data/Decathlon/labelsTr",os.path.basename(self.vol_name))
             tmp = sitk.ReadImage(label)
             label_vol = sitk.GetArrayFromImage(tmp)
         elif self.dataset=="Atlas":
-            name = os.path.basename(self.filename).split('.')[0]
+            name = os.path.basename(self.vol_name).split('.')[0]
             name += "_seg.nii.gz"
             label = os.path.join("../data/Atlas/labels",name)
             tmp = sitk.ReadImage(label)
@@ -689,10 +705,14 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         # if not s0==s1==s2:
         #     pred = zoom(pred,self.scales)
         
+        #TODO reshape pred back
         
+        pred_ = pred[:self.ct_shape[0]].transpose(1,2,0)
         
-        self.cur_slice = len(label_vol)-1 # pred.sum(2).sum(1).nonzero()[0][0]
-        self.pred = pred
+        pred_ = cv2.resize(pred_,dsize=(self.ct_shape[1],self.ct_shape[2]), interpolation=cv2.INTER_NEAREST)
+        pred_ = pred_.transpose(2,0,1)
+        self.cur_slice = len(pred_)-1 # pred.sum(2).sum(1).nonzero()[0][0]
+        self.pred = pred_.astype(int)
     
     
     def getPrediction(self):
@@ -892,11 +912,11 @@ if __name__ == '__main__':
     
 
     if len(sys.argv)<2:
-        print('Usage: $ python annotator.py image_filename')
+        print('Usage: $ python annotator.py image_vol_name')
     else:
         app = PyQt5.QtWidgets.QApplication([])
-        filename = sys.argv[1]
-        ex = Annotator.fromFilename(filename)
+        vol_name = sys.argv[1]
+        ex = Annotator.fromvol_name(vol_name)
     
         ex.show()  # is probably better placed here than in init
         app.exec()
