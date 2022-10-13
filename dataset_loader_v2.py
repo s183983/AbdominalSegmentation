@@ -32,7 +32,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         elif mode=="test" and datasets=="Decathlon":
             self.data_path = os.path.join(data_path+datasets, "imagesTs")
             
-        elif mode=="train" and datasets=="preprocessed_Decathlon":
+        elif mode=="train" and datasets.find("preprocessed")!=-1:
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
             self.label_path = os.path.join(data_path, datasets, "labelsTr")
             self.data_list = glob.glob(os.path.join(self.data_path,"*.npy*"))

@@ -5,15 +5,23 @@ import nibabel as nib
 from tqdm import tqdm
 from functions import crop_CT
 import cv2
-datasets = 'Decathlon'
+datasets = 'Synapse'
 data_path='../data/'
 im_path = os.path.join(data_path, datasets, "imagesTr")
 label_path = os.path.join(data_path, datasets, "labelsTr")
 im_list = glob.glob(os.path.join(im_path,"*.nii*"))
-save_dir_ims = "../data/preprocessed_Decathlon/imagesTr"
-save_dir_labs = "../data/preprocessed_Decathlon/labelsTr"
+path = "../data/preprocessed_"+datasets
+save_dir_ims = path+"/imagesTr"
+save_dir_labs =path+"/labelsTr"
 
-crop_size = [192,192,96]
+if not os.path.exists(path):
+    os.makedirs(path)
+if not os.path.exists(save_dir_ims):
+    os.makedirs(save_dir_ims)
+if not os.path.exists(save_dir_labs):
+    os.makedirs(save_dir_labs)
+    
+crop_size = [128,128,96]
 
 diffs = []
 
@@ -32,12 +40,6 @@ for img_name in tqdm(im_list):
     # diff = nnz.max(1)-nnz.min(1)
     # diffs.append(diff)
     
-    label_crop = label[
-                        spleen_mean[0]-crop_size[0]//2 : spleen_mean[0]-crop_size[0]//2,
-                        spleen_mean[1]-crop_size[1]//2 : spleen_mean[1]-crop_size[1]//2,
-                        min(spleen_mean[2]-crop_size[2]//2,0):max(spleen_mean[2]+crop_size[2]//2,label_shape[2])
-                        ]
-    
     image = image.astype(float)
     im_min, im_max = np.quantile(image,[0.001,0.999])
     image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
@@ -45,9 +47,9 @@ for img_name in tqdm(im_list):
     image = crop_CT(image, 96, image.shape[2])
     label = crop_CT(label, 96, label.shape[2])
 
-    if label.shape != (128,128,96):
-        image = cv2.resize(image,dsize=(128, 128), interpolation=cv2.INTER_AREA)
-        label = cv2.resize(label,dsize=(128, 128), interpolation=cv2.INTER_NEAREST)
+    if label.shape != crop_size:
+        image = cv2.resize(image,dsize=(crop_size[0], crop_size[1]), interpolation=cv2.INTER_AREA)
+        label = cv2.resize(label,dsize=(crop_size[0], crop_size[1]), interpolation=cv2.INTER_NEAREST)
     # label[(label==2)] = 1
         
     base_name = os.path.basename(img_name)

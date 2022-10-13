@@ -237,7 +237,7 @@ if __name__ == "__main__":
 
 
     net_name = "just_learn"
-    dataset = "Decathlon"    
+    dataset = "Synapse"    
     
     if dataset=="Pancreas":
         folder = "../data/Pancreas"
@@ -246,6 +246,8 @@ if __name__ == "__main__":
         folder = "../data/Decathlon/imagesTr"
     elif dataset=="Atlas":
         folder = "../data/Atlas/images"
+    elif dataset=="Synapse":
+        folder = "../data/Synapse/imagesTr"
     use_file_dialog = False
     if use_file_dialog:
         filedialog = QtWidgets.QFileDialog()

@@ -160,9 +160,10 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             ct_vol = sitk.GetArrayFromImage(sitk_t1)
         
         ct_vol = np.flip(ct_vol,0)
-        ct_vol[ct_vol<-1024] = -1024
-        ct_vol[ct_vol>1024] = 1024
-        ct_vol = (255*(ct_vol - np.min(ct_vol))/np.ptp(ct_vol)).astype(np.uint8)
+        # ct_vol[ct_vol<-1024] = -1024
+        # ct_vol[ct_vol>1024] = 1024
+        im_min, im_max = np.quantile(ct_vol,[0.001,0.999])
+        ct_vol = (np.clip((ct_vol-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
         
         if resize_shape is None:
             resize_shape = (ct_vol.shape[2],ct_vol.shape[1])
@@ -666,24 +667,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         # tmp_name = self.vol_name.replace(self.dataset,"preprocessed_"+self.dataset)
         # pre_vol = np.load(tmp_name.replace('nii.gz', "npy")) / 255.0*2.0 - 1.0
         
-        thresh = 0.1
-        vol = self.ct_vol.astype(np.float32)/255.0*2.0 - 1.0
         
-        vol_reshaped = np.flipud(reshapeCT(vol).transpose(0,2,1)).copy()
-        
-        vol_t = torch.from_numpy(vol_reshaped).to(self.device, dtype=torch.float)
-        ss = nn.Sigmoid()
-        print("Predicting")
-        with torch.no_grad():
-            seg = self.net(vol_t.unsqueeze(0).unsqueeze(0))
-            print("did seg")
-            seg = ss(seg)
-        
-        seg[seg>=thresh] = 1
-        seg[seg<thresh] = 0
-        pred = seg[0][0].cpu().numpy()
-        pred = np.flipud(pred.transpose(0,2,1))
-        print("Prediction finished")
         #TODO - predict with network
         if self.dataset=="Pancreas":
             file_num = ''.join([s for s in os.path.basename(self.vol_name) if s.isdigit()])
@@ -692,26 +676,50 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             sitk_t1 = sitk.ReadImage(label_name)
             label_vol = sitk.GetArrayFromImage(sitk_t1)
         elif self.dataset=="Decathlon":
-            label = os.path.join("../data/Decathlon/labelsTr",os.path.basename(self.vol_name))
-            tmp = sitk.ReadImage(label)
-            label_vol = sitk.GetArrayFromImage(tmp)
+            thresh = 0.1
+            vol = self.ct_vol.astype(np.float32)/255.0*2.0 - 1.0
+            
+            vol_reshaped = np.flipud(reshapeCT(vol).transpose(0,2,1)).copy()
+            
+            vol_t = torch.from_numpy(vol_reshaped).to(self.device, dtype=torch.float)
+            ss = nn.Sigmoid()
+            print("Predicting")
+            with torch.no_grad():
+                seg = self.net(vol_t.unsqueeze(0).unsqueeze(0))
+                print("did seg")
+                seg = ss(seg)
+            
+            seg[seg>=thresh] = 1
+            seg[seg<thresh] = 0
+            pred = seg[0][0].cpu().numpy()
+            pred = np.flipud(pred.transpose(0,2,1))
+            print("Prediction finished")
+            pred_ = pred[:self.ct_shape[0]].transpose(1,2,0)
+            
+            pred_ = cv2.resize(pred_,dsize=(self.ct_shape[1],self.ct_shape[2]), interpolation=cv2.INTER_NEAREST)
+            pred_ = pred_.transpose(2,0,1)
         elif self.dataset=="Atlas":
             name = os.path.basename(self.vol_name).split('.')[0]
             name += "_seg.nii.gz"
             label = os.path.join("../data/Atlas/labels",name)
             tmp = sitk.ReadImage(label)
             label_vol = sitk.GetArrayFromImage(tmp)
-        
+        elif self.dataset=="Synapse":
+            name = os.path.basename(self.vol_name).split('.')[0].replace("img","label")
+            name += ".nii.gz"
+            labelName = os.path.join("../data/Synapse/labelsTr",name)
+            tmp = sitk.ReadImage(labelName)
+            label = sitk.GetArrayFromImage(tmp)
+            pred_ = np.zeros_like(label)
+            pred_[(label==2) | (label==3)] = 1
+            
       
         # if not s0==s1==s2:
         #     pred = zoom(pred,self.scales)
         
         #TODO reshape pred back
         
-        pred_ = pred[:self.ct_shape[0]].transpose(1,2,0)
         
-        pred_ = cv2.resize(pred_,dsize=(self.ct_shape[1],self.ct_shape[2]), interpolation=cv2.INTER_NEAREST)
-        pred_ = pred_.transpose(2,0,1)
         self.pred = pred_.astype(int)
     
         
