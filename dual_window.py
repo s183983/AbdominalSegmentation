@@ -11,6 +11,7 @@ import os
 import numpy as np
 import PyQt5
 from PyQt5 import QtWidgets
+from PyQt5 import QtCore
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 import pydicom as dcm
 from pydicom.errors import InvalidDicomError
@@ -19,15 +20,33 @@ from vtkmodules.vtkCommonColor import vtkNamedColors
 from annotator import Annotator
 from scipy.ndimage import gaussian_filter
 
+class KeyHelper(QtCore.QObject):
+    keyPressed = QtCore.pyqtSignal(QtCore.Qt.Key)
+
+    def __init__(self, window):
+        super().__init__(window)
+        self._window = window
+
+        self.window.installEventFilter(self)
+
+    @property
+    def window(self):
+        return self._window
+
+    def eventFilter(self, obj, event):
+        if obj is self.window and event.type() == PyQt5.QtCore.QEvent.KeyPress:
+            self.keyPressed.emit(event.key())
+        return super().eventFilter(obj, event)
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, folder, dataset = False, net_name=None, resize_size=None, scale_to_screen=None, parent=None):
-        QtWidgets.QMainWindow.__init__(self, parent)
+        super(MainWindow,self).__init__(parent)
+        self.setObjectName("MainWindow")
         volShape = [960,960]
         self.folder = folder
         self.frame = QtWidgets.QFrame()
         self.hl = QtWidgets.QHBoxLayout()
-        self.volFrame = Annotator.fromFolder(folder, net_name, resize_size, [960,960], dataset)
+        self.volFrame = Annotator.fromFolder(folder, net_name, resize_size, volShape, dataset)
 
         self.surfaceFrame = QVTKRenderWindowInteractor(self.frame)
         # self.hl.addWidget(self.volFrame)
@@ -44,8 +63,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # self.volFrame.mouseRelease.connect(self.mouseReleaseEvent)
         
-        
-        
+                
         self.initRender()
         # self.setup_screen_things()
         # self.setup_screen_things_3_d()
@@ -54,7 +72,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hl.addWidget(self.split)
         self.frame.setLayout(self.hl)
         self.setCentralWidget(self.frame)
-        self.setLayout(self.hl)
+        # self.setLayout(self.hl)
         self.showMaximized()
         self.show()
         # self.iren = self.GetInteractor()
@@ -79,39 +97,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.surfaceFrame.GetRenderWindow().AddRenderer(self.ren)
         self.iren_3d = self.surfaceFrame.GetRenderWindow().GetInteractor()
         self.renderMesh()
-    def setup_screen_things_3_d(self):
-        self.ren = vtk.vtkRenderer()
-        self.surfaceFrame.GetRenderWindow().AddRenderer(self.ren)
-        self.iren_3d = self.surfaceFrame.GetRenderWindow().GetInteractor()
-        
-        pred = self.volFrame.getPrediction()
-        pred_filt = gaussian_filter(pred,1)
-        vtk_data = numpy_to_vtk(num_array=pred_filt.ravel(), deep=True, array_type=vtk.VTK_FLOAT)
-        
-        self.init_pred = pred
-        
-        imgdat = vtk.vtkImageData()
-        imgdat.GetPointData().SetScalars(vtk_data)
-        imgdat.SetDimensions(self.volFrame.ct_shape[1], self.volFrame.ct_shape[2], self.volFrame.ct_shape[0])
-        imgdat.SetOrigin(0, 0, 0)
-        spacing = self.volFrame.spacing
-        imgdat.SetSpacing(spacing[0], spacing[1], spacing[2])
-        
-        
-        surface = vtk.vtkMarchingCubes()
-        surface.SetInputData(imgdat)
-        surface.ComputeNormalsOn()
-        surface.SetValue(0, 0.9 )
-        surface.Update()
-        
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(surface.GetOutputPort())
-
-        self.actor = vtk.vtkActor()
-        self.actor.SetMapper(mapper)
-    
-
-        self.ren.AddActor(self.actor)
 
     def setup_screen_things(self):
         print("Reading DICOM")
@@ -173,34 +158,40 @@ class MainWindow(QtWidgets.QMainWindow):
         imgdat.SetSpacing(spacing[0], spacing[1], spacing[2])
         
         
-        surface = vtk.vtkMarchingCubes()
+        surface = vtk.vtkMarchingCubes() #vtk.vtkFlyingEdges3D()
         surface.SetInputData(imgdat)
         surface.ComputeNormalsOn()
         surface.SetValue(0, 0.8 )
         surface.Update()
         
+        cleaner = vtk.vtkCleanPolyData()
+        cleaner.SetInputData(surface.GetOutput())
+        cleaner.Update()
         
-        surfaceTriangulator = vtk.vtkTriangleFilter()
-        surfaceTriangulator.SetInputData(surface.GetOutput())
-        surfaceTriangulator.PassLinesOn()
-        surfaceTriangulator.PassVertsOn()
-        surfaceTriangulator.Update()
         
-        smoother = vtk.vtkSmoothPolyDataFilter()
-        smoother.SetInputConnection(surfaceTriangulator.GetOutputPort())
-        smoother.SetNumberOfIterations(100)
-        smoother.SetRelaxationFactor(0.5)
-        smoother.FeatureEdgeSmoothingOff()
-        smoother.BoundarySmoothingOn()
-        smoother.Update()
+        # surfaceTriangulator = vtk.vtkTriangleFilter()
+        # surfaceTriangulator.SetInputData(surface.GetOutput())
+        # surfaceTriangulator.PassLinesOn()
+        # surfaceTriangulator.PassVertsOn()
+        # surfaceTriangulator.Update()
         
-        smooth_butterfly = vtk.vtkButterflySubdivisionFilter()
-        smooth_butterfly.SetNumberOfSubdivisions(3)
-        smooth_butterfly.SetInputConnection(surface.GetOutputPort())
-        smooth_butterfly.Update()
+        # smoother = vtk.vtkSmoothPolyDataFilter()
+        # smoother.SetInputConnection(surfaceTriangulator.GetOutputPort())
+        # smoother.SetNumberOfIterations(100)
+        # smoother.SetRelaxationFactor(0.5)
+        # smoother.FeatureEdgeSmoothingOff()
+        # smoother.BoundarySmoothingOn()
+        # smoother.Update()
+        
+        # smooth_butterfly = vtk.vtkButterflySubdivisionFilter()
+        # smooth_butterfly.SetNumberOfSubdivisions(3)
+        # smooth_butterfly.SetInputConnection(surface.GetOutputPort())
+        # smooth_butterfly.Update()
+        
+        
         
         smoother = vtk.vtkWindowedSincPolyDataFilter()
-        smoother.SetInputConnection(smooth_butterfly.GetOutputPort())
+        smoother.SetInputData(cleaner.GetOutput())
         smoother.SetNumberOfIterations(15);
         smoother.BoundarySmoothingOff();
         smoother.FeatureEdgeSmoothingOff();
@@ -212,7 +203,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
 
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(smoother.GetOutputPort())
+        mapper.SetInputData(smoother.GetOutput())
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
@@ -224,20 +215,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ren.RemoveActor(self.actor)
         self.ren.AddActor(actor)
         self.iren_3d.Initialize()
-        nc = vtkNamedColors()
         self.ren.SetBackground((200/255,162/255,200/255))
 
     def mouseReleaseEvent(self, event):
         self.volFrame.mouseReleaseEvent1(event)
         self.renderMesh()
-        print("click done")
    
+    def handle_key_pressed(self, event):
+        # print("Key event")
+        # print(event)
+        self.volFrame.keyPressEvent1(event)
+        
+    
+    
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
 
     net_name = "just_learn"
-    dataset = "Synapse"    
+    dataset = "Decathlon"    
     
     if dataset=="Pancreas":
         folder = "../data/Pancreas"
@@ -263,4 +259,6 @@ if __name__ == "__main__":
                         net_name = net_name)
     
     window.show()
+    helper = KeyHelper(window.windowHandle())
+    helper.keyPressed.connect(window.handle_key_pressed)
     app.exec()

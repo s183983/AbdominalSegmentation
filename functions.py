@@ -289,7 +289,7 @@ def fxn():
 def reshapeCT(image):
     image = image.transpose(1,2,0)
     im_min, im_max = np.quantile(image,[0.001,0.999])
-    # image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
+    image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
     
     image = crop_CT(image, 96, image.shape[2])
 

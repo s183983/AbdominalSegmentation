@@ -20,7 +20,6 @@ import glob
 import torch
 import requests
 import cv2
-import imutils
 import SimpleITK as sitk
 from scipy.ndimage import zoom
 from functions import reshapeCT
@@ -163,7 +162,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         # ct_vol[ct_vol<-1024] = -1024
         # ct_vol[ct_vol>1024] = 1024
         im_min, im_max = np.quantile(ct_vol,[0.001,0.999])
-        ct_vol = (np.clip((ct_vol-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
+        ct_vol = (np.clip((ct_vol-im_min)/(im_max-im_min),0,1)*255).astype(np.uint8)
         
         if resize_shape is None:
             resize_shape = (ct_vol.shape[2],ct_vol.shape[1])
@@ -242,17 +241,23 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     helpText = (
         '<i>Help for annotator</i> <br>' 
         '<b>KEYBOARD COMMANDS:</b> <br>' 
-        '&nbsp; &nbsp; <b>1</b> to <b>9</b> changes pen label (L) <br>' 
-        '&nbsp; &nbsp; <b>0</b> eraser mode <br>' 
-        '&nbsp; &nbsp; <b>&uarr;</b> and <b>&darr;</b> changes pen width (W) <br>' 
-        '&nbsp; &nbsp; <b>Enter</b> predicts mask from skelet <br>' 
+        '&nbsp; &nbsp; <b>d</b> changes to drawing mode <br>' 
+        '&nbsp; &nbsp; <b>s</b> changes to segmentation mode <br>'
         '&nbsp; &nbsp; <b>Z</b> undo last pencil brush <br>' 
         '&nbsp; &nbsp; <b>R</b> resets current image <br>' 
-        '&nbsp; &nbsp; <b>I</b> loads a new image into the annotator <br>' 
+        '&nbsp; &nbsp; <b>Enter</b> saves segmentation and loads a new scan <br>' 
         # '&nbsp; &nbsp; <b>S</b> saves annotation <br>' 
-        '&nbsp; &nbsp; <b>H</b> shows this help <br>' 
-        '<b>MOUSE DRAG:</b> <br>' 
-        '&nbsp; &nbsp; Draws annotation <br>')
+        '&nbsp; &nbsp; <b>H</b> toggles this help <br>' 
+        '<b>Drawing mode:</b> <br>' 
+        '&nbsp; &nbsp; <b>Mouse Drag</b> Draws annotation <br>'
+         
+        '&nbsp; &nbsp; <b>1</b> add anontation <br>' 
+        '&nbsp; &nbsp; <b>2</b> remove anontation <br>' 
+        '&nbsp; &nbsp; <b>&uarr;</b> and <b>&darr;</b> changes pen width (W) <br>' 
+        '<b>Segmentation mode:</b> <br>' 
+        '&nbsp; &nbsp; <b>Mouse LeftClick</b> adds points labelled as inside <br>' 
+        '&nbsp; &nbsp; <b>Mouse RightClick</b> adds points labelled as ouside <br>'
+ )
     
     @classmethod
     def introText(cls, rich = True):
@@ -269,30 +274,13 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     def reset_image(self):
         path = "C:/Users/lowes/OneDrive/Skrivebord/DTU/8_semester/General_Interactive_Segmentation"
 
-        if self.url is not None:
-            # url = "http://192.168.0.112:8080/shot.jpg"
-            while True:
-                img_resp = requests.get(self.url)
-                img_arr = np.array(bytearray(img_resp.content), dtype=np.uint8)
-                img = cv2.imdecode(img_arr, -1)
-                img = imutils.resize(img, width=1000, height=1800)
-                cv2.imshow("Android_cam", img)
-              
-                # Press Esc key to exit
-                if cv2.waitKey(1) != -1:
-                    break
-              
-            cv2.destroyAllWindows()
-            im = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
+        if self.medical_images:
+            im_list = glob.glob(os.path.join(path,"CHAOS_Train_Sets/Train_Sets/images","*.png"))
         else:
-            if self.medical_images:
-                im_list = glob.glob(os.path.join(path,"CHAOS_Train_Sets/Train_Sets/images","*.png"))
-            else:
-                im_list = glob.glob(os.path.join(path,'benchmark/dataset/img','*.jpg'))
-            im_name = random.choice(im_list)
-            print(os.path.basename(im_name))
-            im = np.array(Image.open(im_name))
+            im_list = glob.glob(os.path.join(path,'benchmark/dataset/img','*.jpg'))
+        im_name = random.choice(im_list)
+        print(os.path.basename(im_name))
+        im = np.array(Image.open(im_name))
         
         if im.ndim==2:
             im = np.stack((im,im,im),axis=2)
@@ -653,13 +641,19 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             indices = np.unique(np.vstack((indices,np.array([self.sphere_nonzero[2]+shift[2],
                                 self.sphere_nonzero[1]+shift[1],
                                 self.sphere_nonzero[0]+shift[0]]).T)),axis=0)
-
-        self.pred[indices[:,0],indices[:,1],indices[:,2]] = 1
+            
+        if self.label==1:
+            self.pred[indices[:,0],indices[:,1],indices[:,2]] = 1
+        else:
+            self.pred[indices[:,0],indices[:,1],indices[:,2]] = 0
         
     def update_pred(self):
         annotations = qimage2ndarray.rgb_view(self.resizePix.toImage())
         
-        self.pred[self.cur_slice][annotations[:,:,0]>0] = 1
+        if self.label==1:
+            self.pred[self.cur_slice][annotations.sum(2)>0] = 1
+        else:
+            self.pred[self.cur_slice][annotations.sum(2)>0] = 0
         self.reset_current_image()
         
     def predict(self):
@@ -676,7 +670,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             sitk_t1 = sitk.ReadImage(label_name)
             label_vol = sitk.GetArrayFromImage(sitk_t1)
         elif self.dataset=="Decathlon":
-            thresh = 0.1
+            thresh = 0.5
             vol = self.ct_vol.astype(np.float32)/255.0*2.0 - 1.0
             
             vol_reshaped = np.flipud(reshapeCT(vol).transpose(0,2,1)).copy()
@@ -710,8 +704,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             labelName = os.path.join("../data/Synapse/labelsTr",name)
             tmp = sitk.ReadImage(labelName)
             label = sitk.GetArrayFromImage(tmp)
-            pred_ = np.zeros_like(label)
-            pred_[(label==2) | (label==3)] = 1
+            label[~((label==2) | (label==3))] = 0
+            label[((label==2) | (label==3))] = 1
+            pred_ = np.flipud(label)
             
       
         # if not s0==s1==s2:
@@ -749,48 +744,51 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         self.reset_masks()
         self.update()
             
-    def keyPressEvent(self, event):
-        if 47<event.key()<58: #numbers 0 (48) to 9 (57)
-            self.label = event.key()-48
+    def keyPressEvent1(self, key):
+        if 47<key<58: #numbers 0 (48) to 9 (57)
+            self.label = key-48
             self.drawCursorPoint(self.lastCursorPoint)
             self.update()
             self.showInfo(f'Changed pen label to {self.label}')
-        elif event.key()==PyQt5.QtCore.Qt.Key_Up: # uparrow          
+        elif key==PyQt5.QtCore.Qt.Key_Up: # uparrow          
             self.penWidth = min(self.penWidth+1,50) 
             self.drawCursorPoint(self.lastCursorPoint)
             self.update()
             self.showInfo(f'Changed pen width to {self.penWidth}')
-        elif event.key()==PyQt5.QtCore.Qt.Key_Down: # downarrow
+        elif key==PyQt5.QtCore.Qt.Key_Down: # downarrow
             self.penWidth = max(self.penWidth-1,1)
             self.drawCursorPoint(self.lastCursorPoint)
             self.update()
             self.showInfo(f'Changed pen widht to {self.penWidth}')
-        elif event.key()==PyQt5.QtCore.Qt.Key_S: # s
+        elif key==PyQt5.QtCore.Qt.Key_S: # s
             self.saveOutcome()
-        elif event.key()==PyQt5.QtCore.Qt.Key_O: # o
+        elif key==PyQt5.QtCore.Qt.Key_O: # o
             self.overlay = (self.overlay+1)%len(self.overlays)
             self.update()
             self.showInfo(f'Changed overlay to {self.overlays[self.overlay]}')
-        elif event.key()==PyQt5.QtCore.Qt.Key_Z: # z
+        elif key==PyQt5.QtCore.Qt.Key_Z: # z
             self.undo()
             # if not self.zPressed:
             #     self.showInfo('Zooming enabled')
             #     self.zPressed = True
             #     self.cursorPix.fill(self.color_picker(label=0, opacity=0)) # clear (fill with transparent)
             #     self.update()
-        elif event.key()==PyQt5.QtCore.Qt.Key_R: # r
+        elif key==PyQt5.QtCore.Qt.Key_R: # r
             self.reset_current_image()
-        elif event.key()==PyQt5.QtCore.Qt.Key_H: # h        
+        elif key==PyQt5.QtCore.Qt.Key_H: # h        
             if not self.hPressed:
                 self.hPressed = True
                 self.showHelp()
-        # elif event.key()==PyQt5.QtCore.Qt.Key_Escape: # escape
+            else:
+                self.hideText()
+                self.hPressed = False
+        # elif key==PyQt5.QtCore.Qt.Key_Escape: # escape
         #     self.closeEvent()
-        elif event.key()==PyQt5.QtCore.Qt.Key_Return:
+        elif key==PyQt5.QtCore.Qt.Key_Return:
             self.predict()
             self.showInfo('Predicting mask from skeleton')
             self.update()
-        elif event.key()==PyQt5.QtCore.Qt.Key_I:
+        elif key==PyQt5.QtCore.Qt.Key_I:
             self.reset_image()
             self.resetZoom()
             self.label = 1
@@ -798,7 +796,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         self.setTitle()
         
     def keyReleaseEvent(self, event):
-        # if event.key()==PyQt5.QtCore.Qt.Key_Z: # z
+        # if key==PyQt5.QtCore.Qt.Key_Z: # z
         #     if not self.activelyZooming:
         #         self.drawCursorPoint(self.lastCursorPoint)
         #         if self.newZoomValues is None:

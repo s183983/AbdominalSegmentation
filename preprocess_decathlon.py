@@ -50,8 +50,12 @@ for img_name in tqdm(im_list):
     im_min, im_max = np.quantile(image,[0.001,0.999])
     image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
     
-    image = crop_CT(image, crop_size[2], image.shape[2])
-    label = crop_CT(label, crop_size[2], label.shape[2])
+    image = crop_CT(image, 96, image.shape[2])
+    label = crop_CT(label, 96, label.shape[2])
+    
+    if datasets=="Synapse":
+        label[~((label==2) | (label==3))] = 0
+        label[((label==2) | (label==3))] = 1
 
     if label.shape != crop_size:
         image = cv2.resize(image,dsize=(crop_size[0], crop_size[1]), interpolation=cv2.INTER_AREA)
