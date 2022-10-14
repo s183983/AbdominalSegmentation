@@ -5,7 +5,7 @@ import json
 def get_args(name="default",dict_mode=False):
     name_override=None
     
-    args_dict = {"name": 'default',
+    args_dict = {"name": 'pls_learn',
                 "wandb": True,
                 "unet": {
                     "block": "ffmmm", #one of ['f','m']. m=MBConv (seperated conv),f=FusedMBConv (normal conv)
@@ -24,18 +24,18 @@ def get_args(name="default",dict_mode=False):
                     "num_classes": 1,#Number of output channels (or classes)
                 },
                 "training": {
-                    "reshape": [128,128,96], #reshape size for batch. If int instead of list then same reshape is used for spacial dimensions
+                    "reshape": [128,128,128], #reshape size for batch. If int instead of list then same reshape is used for spacial dimensions
                     "reshape_mode": None, # ['padding', 'fixed_size' or None]
                     "interp_mode": ["area","nearest"], #interpolation mode for rescaling of images
-                    "max_iter": 10000, #Number of training iterations to complete training
-                    "batch": 4, #Batch size
-                    "lr": 1e-4,#Learning rate
+                    "max_iter": 30000, #Number of training iterations to complete training
+                    "batch": 3, #Batch size
+                    "lr": 1e-5,#Learning rate
                     "weight_decay": 1e-4,#Adam optimizer weight decay
-                    "augment": False,
+                    "augment": True,
                     "aug_rampup": 10000, 
                     "recon_mode": "BCE", #one of ["L1", "L2", "BCE"]
                     "pretrain_name_ite": None,
-                    "datasets": "preprocessed_Decathlon", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
+                    "datasets": "preprocessed_Synapse", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
                     "dataset_p": None,
                     "weight_mode_loss": None,
                     
@@ -51,6 +51,9 @@ def get_args(name="default",dict_mode=False):
         elif name=="just_learn":
             args_mod = {"training":{"datasets": "preprocessed_Decathlon"}}
             args_mod["training"]["max_iter"] = 15000
+        elif name=="pls_learn":
+            args_mod = {"training":{"datasets": "preprocessed_Synapse"}}
+            args_mod["training"]["max_iter"] = 20000
         else:
             raise ValueError('Invalid model name')
             

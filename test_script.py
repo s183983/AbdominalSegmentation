@@ -245,3 +245,29 @@ ax[0,0].imshow(np.squeeze(image[:,:,s]))
 ax[0,1].imshow(np.squeeze(aug_image[:,:,s]))
 ax[1,0].imshow(np.squeeze(mask[:,:,s]))
 ax[1,1].imshow(np.squeeze(aug_mask[:,:,s]))
+#%%
+from functions import (
+    num_of_params,
+    sample_data,
+    loss_func,
+    requires_grad,
+    get_transform_tr,
+    load_state_dict_loose,
+    crop_CT,
+    get_augmentation
+    )
+image = np.load("../data/preprocessed_Synapse/imagesTr/img0001.npy")
+mask = np.load("../data/preprocessed_Synapse/labelsTr/label0001.npy")
+
+
+
+data = {'image': image, 'mask': mask}
+aug_data = aug(**data)
+aug_image = aug_data['image']
+aug_mask = aug_data['mask']
+s = 10
+fig, ax =  plt.subplots(2,2)
+ax[0,0].imshow(np.squeeze(image[:,:,s]))
+ax[0,1].imshow(np.squeeze(aug_image[:,:,s]))
+ax[1,0].imshow(np.squeeze(mask[:,:,s]))
+ax[1,1].imshow(np.squeeze(aug_mask[:,:,s]))

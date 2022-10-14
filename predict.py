@@ -26,10 +26,10 @@ with HiddenPrints():
 if __name__ ==  '__main__':
     device = "cuda"
     ROOT = "../"
-    MODEL = 'runs/default/checkpoint/'
+    MODEL = '../runs/pls_learn/checkpoint/'
     check_point_name = os.path.join(ROOT, MODEL)
-    name = os.path.join(MODEL, "006000.pt")
-    net_name = 'default'
+    name = os.path.join(MODEL, "030000.pt")
+    net_name = 'pls_learn'
     device = "cuda"
     arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
     #args = get_args(name=arg_name[:-1])
@@ -58,9 +58,9 @@ if __name__ ==  '__main__':
         m = nn.Sigmoid()
         outpred = m(net(img))
         
-    s_n = 50
+    s_n = 60
     fig, ax = plt.subplots(1,3)    
-    ax[0].imshow((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))
+    ax[0].imshow(((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))>0.5)
     ax[0].set_title('output pred')
     ax[1].imshow((np.squeeze(label_gt[1,:,s_n,:,:].cpu().detach())).permute(1,0))
     ax[1].set_title('GT')

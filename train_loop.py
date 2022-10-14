@@ -96,16 +96,16 @@ def train_classifier(args, net, optim_net, start_iter,
         net.zero_grad()
         loss_net.backward()
         optim_net.step()
-        # print("optimized")
-        if i%vali_every_ite==0 and args.training.augment:
-            if args.training.aug_rampup is not None:
-                if i<=args.training.aug_rampup:
-                    ds_tr.transform = get_transform_tr(
-                        ite=0,max_p=0.6,rampup_ite=args.training.aug_rampup)
-                    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch,
-                        sampler=ds_tr.data_sampler,
-                        shuffle=ds_tr.data_sampler is None,drop_last=True,num_workers=4)
-                    dl_tr = sample_data(dl_tr)
+        # # print("optimized")
+        # if i%vali_every_ite==0 and args.training.augment:
+        #     if args.training.aug_rampup is not None:
+        #         if i<=args.training.aug_rampup:
+        #             ds_tr.transform = get_transform_tr(
+        #                 ite=0,max_p=0.6,rampup_ite=args.training.aug_rampup)
+        #             dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch,
+        #                 sampler=ds_tr.data_sampler,
+        #                 shuffle=ds_tr.data_sampler is None,drop_last=True,num_workers=4)
+        #             dl_tr = sample_data(dl_tr)
         
         if (i%vali_every_ite)==0:
             net.eval()
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     
     if len(load_list)>0:
         ckpt = torch.load(load_list[-1], map_location=lambda storage, loc: storage)
-        start_iter = int(load_list[-1].split("/")[-1][:-3])
+        start_iter = int(load_list[-1].split("\\")[-1][:-3])
         #args = ckpt['args']
         #args = update_args(args)
         net.load_state_dict(ckpt["net"])
@@ -280,13 +280,13 @@ if __name__ == "__main__":
     ds_te = None
             
     
-    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch, drop_last=True,num_workers=2)
-    dl_va = torch.utils.data.DataLoader(ds_va,batch_size=args.training.batch, drop_last=True,num_workers=2)
+    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch, drop_last=True,num_workers=3)
+    dl_va = torch.utils.data.DataLoader(ds_va,batch_size=args.training.batch, drop_last=True,num_workers=3)
     
     dl_tr = sample_data(dl_tr)
     dl_va = sample_data(dl_va)
     
     if wandb is not None and args.wandb:
-        wandb.init(project='3DUnet_onescan', entity='s183983',config=args_dict)
+        wandb.init(project='3DUnet_onescan', entity='Bjonze',config=args_dict)
         
     train_classifier(args, net, net_optim, start_iter, dl_tr, dl_va, ds_te, ds_tr)

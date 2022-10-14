@@ -19,9 +19,9 @@ class CT_Dataset(torch.utils.data.Dataset):
     def __init__(self, mode="train",
                      data_path="../data",
                      transform=None,
-                     reshape=[128,128,96],
+                     reshape=[128,128,128],
                      reshape_mode = None, # ['padding', 'fixed_size' or None]
-                     datasets = "preprocessed_Decathlon",
+                     datasets = "preprocessed_Synapse",
                      interp_mode=["area","nearest"]):
     
         if mode=="train" and (datasets=="Decathlon" or datasets=="Decathlon1"):
@@ -88,7 +88,8 @@ class CT_Dataset(torch.utils.data.Dataset):
 
         # image = tio.ScalarImage(img_name)
         # label = tio.ScalarImage(lab_name)
-        if self.datasets != "preprocessed_Decathlon":
+
+        if (self.datasets).find("preprocessed")==-1:
             img = nib.load(img_name)
             image = img.get_fdata()
             lab = nib.load(lab_name)
@@ -96,7 +97,7 @@ class CT_Dataset(torch.utils.data.Dataset):
             image = image.astype(float)
             im_min, im_max = np.quantile(image,[0.001,0.999])
             image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
-        elif self.datasets == "preprocessed_Decathlon":
+        elif self.datasets == "preprocessed_Decathlon" or "preprocessed_Synapse":
             image = np.load(img_name)
             label = np.load(lab_name)
         
@@ -116,7 +117,7 @@ class CT_Dataset(torch.utils.data.Dataset):
                 image = resize(image)
                 label = resize(label)
         
-        if image.shape != (128,128,96):
+        if image.shape != (self.reshape[0],self.reshape[1],self.reshape[2]):
             image = cv2.resize(image,dsize=(self.reshape[1],
                       self.reshape[0]),interpolation=self.interp_modes[0])
             label = cv2.resize(label,dsize=(self.reshape[1],
