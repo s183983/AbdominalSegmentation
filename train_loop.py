@@ -22,7 +22,8 @@ from functions import (
     get_transform_tr,
     load_state_dict_loose,
     fxn,
-    HiddenPrints
+    HiddenPrints,
+    saveTestSample
     )
 from config import (
     get_args,
@@ -197,6 +198,8 @@ def train_classifier(args, net, optim_net, start_iter,
             del save_dict
             del losses_cat
             losses_10k = copy.deepcopy(losses_10k_reset)
+            
+            saveTestSample(img, label_pred, label_gt, ROOT+"runs/"+args.name+"/images"+f"/{str(i+1).zfill(6)}.png")
 
 if __name__ == "__main__":
     device = "cuda"
@@ -259,34 +262,47 @@ if __name__ == "__main__":
     else:
         start_iter = 0
     
-    transform_tr = get_transform_tr(ite=0,
-        max_p=0.6,rampup_ite=args.training.aug_rampup) if args.training.augment else None
+    # transform_tr = get_transform_tr(ite=0,
+    #     max_p=0.6,rampup_ite=args.training.aug_rampup) if args.training.augment else None
     
     ds_tr = CT_Dataset(mode="train",
                          data_path='../data',
-                         transform=transform_tr,
+                         transform=args.training.augment,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
                          datasets = args.training.datasets,
-                         interp_mode = args.training.interp_mode)
+                         interp_mode = args.training.interp_mode,
+                         tissue_range = args.training.tissue_range,
+                         args = args)
 
     ds_va = CT_Dataset(mode="train",
                          data_path='../data',
-                         transform=transform_tr,
+                         transform=args.training.augment,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
                          datasets = args.training.datasets,
-                         interp_mode = args.training.interp_mode)
+                         interp_mode = args.training.interp_mode,
+                         tissue_range = args.training.tissue_range,
+                         args = args)
     ds_te = None
             
     
-    dl_tr = torch.utils.data.DataLoader(ds_tr,batch_size=args.training.batch, drop_last=True,num_workers=3)
-    dl_va = torch.utils.data.DataLoader(ds_va,batch_size=args.training.batch, drop_last=True,num_workers=3)
+    dl_tr = torch.utils.data.DataLoader(ds_tr,
+                                        batch_size=args.training.batch,
+                                        drop_last=True,
+                                        num_workers=args.training.batch)
+    dl_va = torch.utils.data.DataLoader(ds_va,
+                                        batch_size=args.training.batch,
+                                        drop_last=True,
+                                        num_workers=args.training.batch)
     
     dl_tr = sample_data(dl_tr)
     dl_va = sample_data(dl_va)
     
     if wandb is not None and args.wandb:
-        wandb.init(project='3DUnet_onescan', entity='Bjonze',config=args_dict)
+        if os.getlogin()=="lowes":
+            wandb.init(project='3DUnet_onescan', entity='s183983',config=args_dict)
+        else:
+            wandb.init(project='3DUnet_onescan', entity='Bjonze',config=args_dict)
         
     train_classifier(args, net, net_optim, start_iter, dl_tr, dl_va, ds_te, ds_tr)

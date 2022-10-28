@@ -12,25 +12,31 @@ import cv2
 import numpy as np
 import glob
 from functions import get_augmentation
+from point_sim import pointSimulator
 
 class CT_Dataset(torch.utils.data.Dataset):
     
 
     def __init__(self, mode="train",
                      data_path="../data",
-                     transform=None,
+                     transform=False,
                      reshape=[128,128,128],
                      reshape_mode = None, # ['padding', 'fixed_size' or None]
                      datasets = "preprocessed_Synapse",
-                     interp_mode=["area","nearest"]):
+                     interp_mode=["area","nearest"],
+                     tissue_range = [-100,600],
+                     args = None):
     
-        if mode=="train" and (datasets=="Decathlon" or datasets=="Decathlon1"):
+        if mode=="train" and (datasets=="Decathlon" or datasets=="Decathlon1" or datasets=="Synapse"):
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
             self.label_path = os.path.join(data_path, datasets, "labelsTr")
             self.data_list = glob.glob(os.path.join(self.data_path,"*.nii*"))
             
-        elif mode=="test" and datasets=="Decathlon":
-            self.data_path = os.path.join(data_path+datasets, "imagesTs")
+        elif mode=="test" and (datasets=="Decathlon"or datasets=="Synapse"):
+            # self.data_path = os.path.join(data_path+datasets, "imagesTs")
+            self.data_path = os.path.join(data_path, datasets, "imagesTr")
+            self.label_path = os.path.join(data_path, datasets, "labelsTr")
+            self.data_list = glob.glob(os.path.join(self.data_path,"*.nii*"))
             
         elif mode=="train" and datasets.find("preprocessed")!=-1:
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
@@ -48,15 +54,22 @@ class CT_Dataset(torch.utils.data.Dataset):
         #                    tio.RandomElasticDeformation(p=0.25),
         #                    tio.RandomFlip((0, 1, 2), p=1)
         #                    }
-
-            
+        self.mode = mode
+        self.tissue_range = tissue_range
         self.reshape = reshape
         self.reshape_mode = reshape_mode
+        if reshape_mode == "fixed_size":
+            self.imageResizer = tio.Resize(target_shape=self.reshape,
+                                           image_interpolation="linear",
+                                           label_interpolation="linear")
+            self.labelResizer = tio.Resize(target_shape=self.reshape,
+                                           image_interpolation="nearest",
+                                           label_interpolation="nearest")
         self.datasets = datasets
-        if transform!=None:
+        if transform and mode=="train":
             self.transform = get_augmentation((reshape[0], reshape[1], reshape[2]))
         else: 
-            self.transform = transform
+            self.transform = None
             
         interp_dict = {"NEAREST": cv2.INTER_NEAREST,
                        "NEAREST_EXACT": cv2.INTER_NEAREST_EXACT,
@@ -68,6 +81,10 @@ class CT_Dataset(torch.utils.data.Dataset):
                        "LANCZOS4": cv2.INTER_LANCZOS4,}
         self.interp_modes = [interp_dict[i_m.upper()] for i_m in interp_mode]
         
+        if args.training.do_pointSimulation:
+            self.pointSimulator = pointSimulator(**vars(args.pointSim))
+        else:
+            self.pointSimulator = None
 
     def __len__(self):
         return len(self.data_list)
@@ -80,7 +97,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         # labs = os.listdir(self.label_path)[idx]
         
         img_name = self.data_list[idx]
-        lab_name = os.path.join(self.label_path, os.path.basename(img_name))
+        lab_name = os.path.join(self.label_path, os.path.basename(img_name)).replace('img','label')
         
         # img_name = os.path.join(self.data_path, imgs)
         # lab_name = os.path.join(self.label_path, labs)
@@ -95,11 +112,16 @@ class CT_Dataset(torch.utils.data.Dataset):
             lab = nib.load(lab_name)
             label = lab.get_fdata()
             image = image.astype(float)
-            im_min, im_max = np.quantile(image,[0.001,0.999])
-            image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
+            if self.datasets=="Synapse":
+                label[~((label==2) | (label==3))] = 0
+                label[((label==2) | (label==3))] = 1
+            # im_min, im_max = np.quantile(image,[0.001,0.999])
+            # image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
+            im_min, im_max = self.tissue_range
+            image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)
         elif self.datasets == "preprocessed_Decathlon" or "preprocessed_Synapse":
-            image = np.load(img_name)
-            label = np.load(lab_name)
+            image = np.load(img_name)/255
+            label = np.load(lab_name)/255
         
         if self.reshape_mode == "padding":
             if self.reshape is not None:
@@ -109,13 +131,10 @@ class CT_Dataset(torch.utils.data.Dataset):
                 image = crop_CT(image,100,image.shape[2])
         
         elif self.reshape_mode == 'fixed_size':
-            if self.reshape is not None:
-                resize = tio.Resize(self.reshape)
-            else:
-                resize = tio.Resize([128,128,96])
-            if image.shape != (1,128,128,96):
-                image = resize(image)
-                label = resize(label)
+            
+            if image.shape != self.reshape:
+                image = self.imageResizer(image[np.newaxis,...])[0]
+                label = self.labelResizer(label[np.newaxis,...])[0]
         
         if image.shape != (self.reshape[0],self.reshape[1],self.reshape[2]):
             image = cv2.resize(image,dsize=(self.reshape[1],
@@ -139,10 +158,22 @@ class CT_Dataset(torch.utils.data.Dataset):
         else:
             aug_batch = {"image": image, "label": label}
         
+        im_min, im_max = np.quantile(image,[0.001,0.999])
+        image = (np.clip((aug_batch["image"]-im_min)/(im_max-im_min),0,1)*2-1).astype(np.float32)
+        image = torch.from_numpy(image)
+        # image = torch.from_numpy(aug_batch["image"]).permute(2,0,1)*2-1 #/255*2-1
         
-        image = torch.tensor(aug_batch["image"]).permute(2,0,1)/255*2-1#/255*2-1
-        image = image.unsqueeze(0)
-        label = torch.tensor(aug_batch["label"]).permute(2,0,1).unsqueeze(0)
+        
+        
+        if self.pointSimulator is not None:
+            if np.random.random()>0.3 and self.mode=="train":
+                point_vol = torch.from_numpy(self.pointSimulator(label))
+            else:
+                point_vol = torch.zeros_like(image)
+            image = torch.stack((image,point_vol)).permute(0,3,1,2)
+        else:
+            image = image.permute(2,0,1).unsqueeze(0)
+        label = torch.from_numpy(aug_batch["label"]).permute(2,0,1).unsqueeze(0)
         
         # if not isinstance(image.dtype, torch.float):
         #     image = image.type(torch.float)

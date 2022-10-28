@@ -7,6 +7,14 @@ def get_args(name="default",dict_mode=False):
     
     args_dict = {"name": 'pls_learn',
                 "wandb": True,
+                "pointSim": {
+                    "shape": [256,256,128],
+                    "radius": 1,
+                    "range_sampled_points": [2, 10],
+                    "border_mean": 10,
+                    "border_p": 0.4,
+                    "sphere_size": (5,2)
+                },
                 "unet": {
                     "block": "ffmmm", #one of ['f','m']. m=MBConv (seperated conv),f=FusedMBConv (normal conv)
                     "act": "silu", #one of ['silu','relu']
@@ -38,6 +46,8 @@ def get_args(name="default",dict_mode=False):
                     "datasets": "preprocessed_Synapse", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
                     "dataset_p": None,
                     "weight_mode_loss": None,
+                    "do_pointSimulation": False,
+                    "tissue_range": [-100,600]
                     
                 }
             }
@@ -54,6 +64,17 @@ def get_args(name="default",dict_mode=False):
         elif name=="pls_learn":
             args_mod = {"training":{"datasets": "preprocessed_Synapse"}}
             args_mod["training"]["max_iter"] = 20000
+        elif name.find("kidneyPointSniper") != -1:
+            shape = [192,192,128] #[256,256,128]
+            args_mod = {"pointSim":{"shape": shape},
+                        "training":{"reshape": shape},
+                        "unet": {"input_channels": 2}}
+            args_mod["training"]["max_iter"] = 15000
+            args_mod["training"]["reshape_mode"] = "fixed_size"
+            args_mod["training"]["do_pointSimulation"] = True
+            args_mod["training"]["datasets"] = "Synapse"
+            args_mod["training"]["batch"] = 1
+            args_mod["training"]["lr"] = 2e-4
         else:
             raise ValueError('Invalid model name')
             

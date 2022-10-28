@@ -31,12 +31,18 @@ import argparse
 from model_unet_3d import UNet3D
 import utils
 import torch.nn as nn
+import torchio as tio
+import raster_geometry as rg
+import nibabel as nib
 
 
   
 class Annotator(PyQt5.QtWidgets.QWidget):
     
-    def __init__(self, size=None, ct_shape=[10,512,512], resize_size = 128):
+    def __init__(self, size=None, 
+                 ct_shape=[10,512,512],
+                 resize_size = 128,
+                 segmentation_mode = False):
         '''
         Initializes an Annotator without the image.
         Parameters
@@ -70,17 +76,26 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         self.masks_pix.fill(self.color_picker(label=0, opacity=0))
         self.size = size
         # Atributes for drawing
+        self.segmentation_mode = segmentation_mode
         self.ct_shape = ct_shape
         self.resize_size = resize_size
-        self.pen_resize = 8
-        self.label = 1
-        self.penWidth = int(size.width()/40)
+        
+        if segmentation_mode:
+            self.pen_resize = 8
+            self.label = 1
+            self.penWidth = 5
+            self.annotationOpacity = 0.7
+        else:
+            self.pen_resize = 8
+            self.label = 1
+            self.penWidth = int(size.width()/40)
+            self.annotationOpacity = 0.4
+            
         self.lastDrawPoint = PyQt5.QtCore.QPoint()
         
         # Atributes for displaying
         self.overlay = 0
         self.overlays = {0:'both', 1:'annotation', 2:'image'}
-        self.annotationOpacity = 0.4
         self.cursorOpacity = 0.5
         self.zoomOpacity = 0.5
         self.setTitle()
@@ -142,6 +157,8 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     @classmethod
     def fromFolder(cls, folder_name, net_name, resize_size, resize_shape, dataset):
         print("folder init")
+
+        args = get_args(name=net_name)
         
         if dataset=="Pancreas":
             ct_list = glob.glob(os.path.join(folder_name,"data","PANCREAS_**"))
@@ -157,6 +174,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             sitk_t1 = sitk.ReadImage(vol_name)
             spacing = sitk_t1.GetSpacing()
             ct_vol = sitk.GetArrayFromImage(sitk_t1)
+            image = np.flipud(ct_vol.copy().transpose(2,1,0))
+            im_min, im_max = args.training.tissue_range
+            image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)*2-1
         
         ct_vol = np.flip(ct_vol,0)
         # ct_vol[ct_vol<-1024] = -1024
@@ -195,12 +215,16 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         # qimage = PyQt5.QtGui.QImage(im1.data, im1.shape[1], im1.shape[0],bytesPerLine,
         #                             PyQt5.QtGui.QImage.Format_RGB888)
         imagePix = PyQt5.QtGui.QPixmap(qimage)
-        annotator = Annotator(imagePix.size(), ct_vol.shape, resize_size)
+        annotator = Annotator(imagePix.size(),
+                              ct_vol.shape,
+                              resize_size,
+                              args.training.do_pointSimulation)
         annotator.imagePix = imagePix
         annotator.annotationsFilename = os.path.join("Decathlon/labelsTr",os.path.basename(vol_name))
         
         #TODO - fix network
         """ For using segmentation network"""
+        
         device = "cuda"
         path = os.path.join("../runs",net_name,"checkpoint","*.pt")
         nets = glob.glob(path)
@@ -208,10 +232,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         net_path = nets[-1]
         print("net_name", net_path)
         
-        arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
-        #args = get_args(name=arg_name[:-1])
-        args = get_args(name=net_name)
-
+        
+        
+        
 
         net = UNet3D(**vars(args.unet)).to(device)
         ckpt = torch.load(net_path, map_location=lambda storage, loc: storage)
@@ -226,12 +249,15 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         annotator.vol_name = vol_name
         annotator.ct_vol = ct_vol
         annotator.resize_shape = resize_shape
-        annotator.spacing=spacing
+        annotator.spacing = spacing
         annotator.cur_slice = 0  
         annotator.n_slices = ct_vol.shape[0]
         annotator.dataset = dataset
+        annotator.args = args
+        annotator.image = image
+        
         annotator.calculateSphere()
-        annotator.predict() 
+        annotator.predict(init=True) 
         annotator.show_slice()
         return annotator                            
     
@@ -415,12 +441,22 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         painter_scribble.drawPoint(point)   
     
     def mousePressEvent(self, event):
+        if self.segmentation_mode:
+            sx = self.args.training.reshape[0]
+            sy = self.args.training.reshape[1]
+            
+            point = PyQt5.QtCore.QPoint((event.x()-self.padding.x())/self.size.width() * self.ct_shape[2]/self.zoomFactor,
+                    (event.y()-self.padding.y())/self.size.height() * self.ct_shape[1]/self.zoomFactor)
+            center = np.array([point.x(),point.y(),self.cur_slice])
+            sign = 1 if event.button()==PyQt5.QtCore.Qt.LeftButton else -1
+            self.updatePointVol(center,sign)
+            self.predict()
         if event.button() == PyQt5.QtCore.Qt.LeftButton: 
             if self.zPressed: # initiate zooming and not drawing
                 self.cursorPix.fill(self.color_picker(label=0, opacity=0)) # clear (fill with transparent)
                 self.lastCursorPoint = event.pos()
                 self.activelyZooming = True
-                self.newZoomValues = 0 # for distinction between reset and cancel
+                self.newZoomValues = 0 # for distinction between reset and cancel                
             else: # initiate drawing
                 painter_scribble = self.makePainter(self.annotationPix, 
                         self.color_picker(self.label, 
@@ -475,7 +511,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             self.update_pred_list(self.point_list)
             self.point_list = []
             self.activelyDrawing = False
-
+        self.update()
     
     def wheelEvent(self,event):
 
@@ -656,7 +692,28 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             self.pred[self.cur_slice][annotations.sum(2)>0] = 0
         self.reset_current_image()
         
-    def predict(self):
+        
+    def updatePointVol(self,center,sign):
+        idx = center.reshape(3,1)+self.pointSphere_nnz
+        print(idx)
+        self.point_vol[idx[0],idx[1],idx[2]] = sign
+        
+    def predict(self, init=False):
+        
+        thresh = 0.2
+        
+        if init and self.args.training.do_pointSimulation:
+            sphere_size = self.args.pointSim.sphere_size
+            self.pointSphere = rg.sphere(sphere_size[0],sphere_size[1]).astype(int)
+            self.pointSphere_nnz = np.array(self.pointSphere.nonzero())-sphere_size[0]//2
+            self.point_vol = np.zeros(self.args.training.reshape)
+            
+            self.imageResizer = tio.Resize(target_shape=self.args.training.reshape,
+                                           image_interpolation="linear",
+                                           label_interpolation="linear")
+            self.labelResizer = tio.Resize(target_shape=self.ct_shape,
+                                           image_interpolation="nearest",
+                                           label_interpolation="nearest")
         
         # tmp_name = self.vol_name.replace(self.dataset,"preprocessed_"+self.dataset)
         # pre_vol = np.load(tmp_name.replace('nii.gz', "npy")) / 255.0*2.0 - 1.0
@@ -669,52 +726,57 @@ class Annotator(PyQt5.QtWidgets.QWidget):
 
             sitk_t1 = sitk.ReadImage(label_name)
             label_vol = sitk.GetArrayFromImage(sitk_t1)
-        elif self.dataset=="Decathlon":
-            thresh = 0.5
-            vol = self.ct_vol.astype(np.float32)/255.0*2.0 - 1.0
+        elif self.dataset=="Decathlon" or self.dataset=="Synapse":
             
-            vol_reshaped = np.flipud(reshapeCT(vol).transpose(0,2,1)).copy()
+            
+            if self.args.training.reshape_mode == "fixed_size":               
+                vol_reshaped = self.imageResizer(self.image[np.newaxis,...])[0]
+                # import matplotlib.pyplot as plt
+                # plt.imshow(self.image[...,50])
+            else:
+                vol_reshaped = reshapeCT(self.image,self.args.training.reshape[-1]).transpose(0,2,1)
             
             vol_t = torch.from_numpy(vol_reshaped).to(self.device, dtype=torch.float)
             ss = nn.Sigmoid()
+            if self.args.training.do_pointSimulation:
+                point_vol = torch.from_numpy(self.point_vol).to(device=self.device, dtype=torch.float)
+                image = torch.stack((vol_t,point_vol)).permute(0,3,1,2).unsqueeze(0)
+            else:
+                image = vol_t.permute(2,0,1).unsqueeze(0).unsqueeze(0)
+                
             print("Predicting")
             with torch.no_grad():
-                seg = self.net(vol_t.unsqueeze(0).unsqueeze(0))
+                seg = self.net(image)
                 print("did seg")
                 seg = ss(seg)
-            
+                print(seg.sum())
+            print("Prediction finished")
             seg[seg>=thresh] = 1
             seg[seg<thresh] = 0
             pred = seg[0][0].cpu().numpy()
-            pred = np.flipud(pred.transpose(0,2,1))
-            print("Prediction finished")
-            pred_ = pred[:self.ct_shape[0]].transpose(1,2,0)
+            print(pred.sum())
             
-            pred_ = cv2.resize(pred_,dsize=(self.ct_shape[1],self.ct_shape[2]), interpolation=cv2.INTER_NEAREST)
-            pred_ = pred_.transpose(2,0,1)
+            if self.args.training.reshape_mode == "fixed_size":
+                pred_ = self.labelResizer(pred[np.newaxis,...])[0]
+                pred_ = np.flip(pred_,(0,1)).transpose(0,2,1)
+            else:
+            
+                pred = np.flipud(pred.transpose(0,2,1))
+                pred_ = pred[:self.ct_shape[0]].transpose(1,2,0)
+                pred_ = cv2.resize(pred_,dsize=(self.ct_shape[1],self.ct_shape[2]), interpolation=cv2.INTER_NEAREST)
+                pred_ = pred_.transpose(2,0,1)
         elif self.dataset=="Atlas":
             name = os.path.basename(self.vol_name).split('.')[0]
             name += "_seg.nii.gz"
             label = os.path.join("../data/Atlas/labels",name)
             tmp = sitk.ReadImage(label)
             label_vol = sitk.GetArrayFromImage(tmp)
-        elif self.dataset=="Synapse":
-            name = os.path.basename(self.vol_name).split('.')[0].replace("img","label")
-            name += ".nii.gz"
-            labelName = os.path.join("../data/Synapse/labelsTr",name)
-            tmp = sitk.ReadImage(labelName)
-            label = sitk.GetArrayFromImage(tmp)
-            label[~((label==2) | (label==3))] = 0
-            label[((label==2) | (label==3))] = 1
-            pred_ = np.flipud(label)
             
       
         # if not s0==s1==s2:
         #     pred = zoom(pred,self.scales)
         
-        #TODO reshape pred back
-        
-        
+        #TODO only update pred below shown slice
         self.pred = pred_.astype(int)
     
         
@@ -852,48 +914,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     def closeEvent(self,event):
         PyQt5.QtWidgets.QApplication.quit()
         
-    def showVolumeTmp(self):
-        return
-        import vtk
-        from vtk.util.numpy_support import numpy_to_vtk
-        
-        vtk_data = numpy_to_vtk(num_array=self.pred.ravel(), deep=True, array_type=vtk.VTK_FLOAT)
 
-        imgdat = vtk.vtkImageData()
-        imgdat.GetPointData().SetScalars(vtk_data)
-        imgdat.SetDimensions(self.ct_shape[1], self.ct_shape[2], self.ct_shape[0])
-        imgdat.SetOrigin(0, 0, 0)
-        spacing = self.spacing
-        imgdat.SetSpacing(spacing[0], spacing[1], spacing[2])
-        
-        
-        surface = vtk.vtkMarchingCubes()
-        surface.SetInputData(imgdat)
-        surface.ComputeNormalsOn()
-        surface.SetValue(0, 0.5)
-        
-        renderer = vtk.vtkRenderer()
-        # renderer.SetBackground(vtk.colors.GetColor3d('DarkSlateGray'))
-        
-        render_window = vtk.vtkRenderWindow()
-        render_window.AddRenderer(renderer)
-        render_window.SetWindowName('MarchingCubes')
-        
-        interactor = vtk.vtkRenderWindowInteractor()
-        interactor.SetRenderWindow(render_window)
-        
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(surface.GetOutputPort())
-        mapper.ScalarVisibilityOff()
-        
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-        # actor.GetProperty().SetColor(vtk.colors.GetColor3d('MistyRose'))
-        
-        renderer.AddActor(actor)
-        
-        render_window.Render()
-        interactor.Start()
  
     
 def annotate(folder_name, net_name,

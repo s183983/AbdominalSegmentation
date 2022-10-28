@@ -10,6 +10,8 @@ import warnings
 import sys
 import volumentations as V
 
+import matplotlib.pyplot as plt
+
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -199,13 +201,13 @@ def get_transform_tr(ite=None,max_p=0.6,rampup_ite=1500):
 def get_augmentation(patch_size):
     return V.Compose([
         #V.ElasticTransform((0, 0.25), interpolation=2, p=0.1),
-        V.Flip(0, p=0.3),
-        V.Flip(1, p=0.3),
+        # V.Flip(0, p=0.3),
+        # V.Flip(1, p=0.3),
         V.RandomCropFromBorders(crop_2_min=0, crop_2_max=0, p=0.5),
         V.Resize(patch_size, interpolation=1, resize_type=0, always_apply=True, p=1.0),
         #V.Flip(2, p=0.5),
         #V.Rotate((0, 0), (0, 0), (-90, 90), p=1),
-        V.RandomRotate90((0, 1), p=0.3),
+        # V.RandomRotate90((0, 1), p=0.3),
         V.RandomGamma(gamma_limit=(80, 120), p=0.2),
         V.GaussianNoise(var_limit=(0, 5), p=0.2),
     ], p=0.8)
@@ -286,14 +288,51 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
     
 
-def reshapeCT(image):
+def reshapeCT(image, size=96):
     image = image.transpose(1,2,0)
     im_min, im_max = np.quantile(image,[0.001,0.999])
-    image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
+    # image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
     
-    image = crop_CT(image, 96, image.shape[2])
+    image = crop_CT(image, size, image.shape[2])
 
-    if image.shape != (128,128,96):
+    if image.shape != (128,128,size):
         image = cv2.resize(image,dsize=(128, 128), interpolation=cv2.INTER_AREA)
     
     return image.transpose(2,0,1)
+
+
+def saveTestSample(img, pred, label, save_name):
+    img = img.cpu().numpy()
+    pred = pred.cpu().detach().numpy()
+    label = label.cpu().numpy()
+    
+    point_vol = img[0,1]
+    image = img[0,0]/2+0.5
+    slices_nnz = point_vol.nonzero()[0]
+    if not slices_nnz.size:
+        slices_nnz = label[0,0].nonzero()[0]
+    indices = np.random.choice(slices_nnz,2)
+    
+    fig = plt.figure(figsize=(12,6))
+    for i in range(2):
+        plt.subplot(2,3,i*3+1)
+        plt.title("Input, slice: "+str(indices[i]))
+        point_g = point_vol[indices[i]].copy()
+        point_g[point_g<0]=0
+        point_b = -point_vol[indices[i]].copy()
+        point_b[point_b<0] = 0
+        im = np.dstack((image[indices[i]],image[indices[i]],image[indices[i]]))
+        im[point_g.astype(bool),1] = 1
+        im[point_b.astype(bool),2] = 1
+        plt.imshow(im)
+        
+        plt.subplot(2,3,i*3+2)
+        plt.title("Label, slice: "+str(indices[i]))
+        plt.imshow(label[0,0,indices[i]])
+        
+        plt.subplot(2,3,i*3+3)
+        plt.title("Prediction, slice: "+str(indices[i]))
+        plt.imshow(pred[0,0,indices[i]])
+
+    plt.savefig(save_name)
+    plt.close(fig)
