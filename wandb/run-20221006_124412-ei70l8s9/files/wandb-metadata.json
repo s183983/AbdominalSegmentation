@@ -1,0 +1,23 @@
+{
+    "os": "Windows-10-10.0.22000-SP0",
+    "python": "3.9.13",
+    "heartbeatAt": "2022-10-06T10:44:19.440182",
+    "startedAt": "2022-10-06T10:44:12.543474",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 2070",
+    "gpu_count": 1,
+    "cpu_count": 12,
+    "cuda": null,
+    "args": null,
+    "state": "running",
+    "program": "<python with no main file>",
+    "git": {
+        "remote": "https://github.com/s183983/AbdominalSegmentation.git",
+        "commit": "59ea2fd7695ccaea7acf41b575a090c85c74c3ba"
+    },
+    "email": "s183983@student.dtu.dk",
+    "root": "C:/Users/lowes/OneDrive/Skrivebord/DTU/9_semester/Active Learning Medical/AbdominalSegmentation",
+    "host": "MSI",
+    "username": "lowes",
+    "executable": "C:\\Users\\lowes\\anaconda3\\python.exe"
+}
