@@ -54,8 +54,8 @@ if __name__ ==  '__main__':
     # resize = tio.Resize([128,128,100])
     # resize_img = resize(image)
     
-    img_name =  '../data/Decathlon/imagesTr/spleen_1.nii.gz'
-    img_name =  '../data/Synapse/imagesTr/img0001.nii.gz'
+    # img_name =  '../data/Decathlon/imagesTr/spleen_8.nii.gz'
+    img_name =  '../data/Synapse/imagesTr/img0002.nii.gz'
     
     img = nib.load(img_name)
     image = img.get_fdata()
@@ -70,11 +70,16 @@ if __name__ ==  '__main__':
                                    image_interpolation="linear",
                                    label_interpolation="linear")
     
-    pre_vol = imageResizer(pre_vol[np.newaxis,...])[0]
+    pre_vol2 = imageResizer(pre_vol[np.newaxis,...])[0]
     gt_vol = np.load( '../data/preprocessed_Decathlon/labelsTr/spleen_2.npy')
     
-    
-    
+    sitk_t1 = sitk.ReadImage(img_name)
+    spacing = sitk_t1.GetSpacing()
+    ct_vol = sitk.GetArrayFromImage(sitk_t1)
+    image = ct_vol.copy().transpose(2,1,0)
+    im_min, im_max = args.training.tissue_range
+    pre_vol = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)*2-1
+    pre_vol = imageResizer(pre_vol[np.newaxis,...])[0]
     
     transform_tr = False
     ds_tr = CT_Dataset(mode="test",
@@ -131,7 +136,7 @@ if __name__ ==  '__main__':
         sseg = ss(seg)
     
     
-    slice_idx = label_gt[0,0,:,:,:].nonzero()[:,0].median()
+    slice_idx = outpred[0,0,:,:,:].sum(1).sum(1).argmax(0)#nonzero()[:,0].median()
     plt.subplot(2,3,1)
     plt.title("Input")
     plt.imshow((np.squeeze(img[0,0,slice_idx,:,:].cpu().detach())+1)/2)

@@ -235,7 +235,7 @@ if __name__ == "__main__":
     net_name = "pls_learn"
     net_name = "kidneyPointSniper2000"
 
-    dataset = "Decathlon"    
+    dataset = "Synapse"    
     
     if dataset=="Pancreas":
         folder = "../data/Pancreas"

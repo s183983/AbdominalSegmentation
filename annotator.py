@@ -84,12 +84,14 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             self.pen_resize = 8
             self.label = 1
             self.penWidth = 5
-            self.annotationOpacity = 0.7
+            self.annotationOpacity = 0.4
+            self.penOpacity = 0.7
         else:
             self.pen_resize = 8
             self.label = 1
             self.penWidth = int(size.width()/40)
             self.annotationOpacity = 0.4
+            self.penOpacity = 0.4
             
         self.lastDrawPoint = PyQt5.QtCore.QPoint()
         
@@ -170,11 +172,12 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             
             ct_list = glob.glob(os.path.join(folder_name,"*.nii.gz"))
             # random.shuffle(ct_list)
-            vol_name = ct_list.pop(2)
+            ct_list.sort()
+            vol_name = ct_list.pop(1)
             sitk_t1 = sitk.ReadImage(vol_name)
             spacing = sitk_t1.GetSpacing()
             ct_vol = sitk.GetArrayFromImage(sitk_t1)
-            image = np.flipud(ct_vol.copy().transpose(2,1,0))
+            image = ct_vol.copy().transpose(2,1,0)
             im_min, im_max = args.training.tissue_range
             image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)*2-1
         
@@ -255,6 +258,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         annotator.dataset = dataset
         annotator.args = args
         annotator.image = image
+        annotator.point_shape = args.pointSim.shape
         
         annotator.calculateSphere()
         annotator.predict(init=True) 
@@ -445,12 +449,14 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             sx = self.args.training.reshape[0]
             sy = self.args.training.reshape[1]
             
-            point = PyQt5.QtCore.QPoint((event.x()-self.padding.x())/self.size.width() * self.ct_shape[2]/self.zoomFactor,
-                    (event.y()-self.padding.y())/self.size.height() * self.ct_shape[1]/self.zoomFactor)
+            point = PyQt5.QtCore.QPoint((event.x()-self.padding.x())/self.size.width() * self.point_shape[1]/self.zoomFactor,
+                    (event.y()-self.padding.y())/self.size.height() * self.point_shape[0]/self.zoomFactor)
             center = np.array([point.x(),point.y(),self.cur_slice])
             sign = 1 if event.button()==PyQt5.QtCore.Qt.LeftButton else -1
             self.updatePointVol(center,sign)
             self.predict()
+            self.show_slice()
+            
         if event.button() == PyQt5.QtCore.Qt.LeftButton: 
             if self.zPressed: # initiate zooming and not drawing
                 self.cursorPix.fill(self.color_picker(label=0, opacity=0)) # clear (fill with transparent)
@@ -478,7 +484,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
 
                 # print("event pos", event.pos())
                 # print("point pos", point)
-            self.update()
+                self.update()
     
     def mouseMoveEvent(self, event):
            
@@ -696,11 +702,12 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     def updatePointVol(self,center,sign):
         idx = center.reshape(3,1)+self.pointSphere_nnz
         print(idx)
+        print(sign)
         self.point_vol[idx[0],idx[1],idx[2]] = sign
         
     def predict(self, init=False):
         
-        thresh = 0.2
+        thresh = 0.25
         
         if init and self.args.training.do_pointSimulation:
             sphere_size = self.args.pointSim.sphere_size
@@ -757,8 +764,10 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             print(pred.sum())
             
             if self.args.training.reshape_mode == "fixed_size":
-                pred_ = self.labelResizer(pred[np.newaxis,...])[0]
-                pred_ = np.flip(pred_,(0,1)).transpose(0,2,1)
+                # pred_ = self.labelResizer(pred[np.newaxis,...])[0]
+                pred_ = nn.functional.interpolate(seg,size=self.ct_shape)[0,0]
+                pred_ = pred_.cpu().numpy().transpose(0,2,1)#np.flip(pred_,(0,1)).transpose(0,2,1)
+                pred_ = np.flip(pred_,0)
             else:
             
                 pred = np.flipud(pred.transpose(0,2,1))

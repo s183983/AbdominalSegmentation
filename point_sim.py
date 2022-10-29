@@ -78,12 +78,17 @@ if __name__=="__main__":
     import matplotlib.pyplot as plt
     import time
     
-    pointMaker = pointSimulator(shape=[256,256,90],
-                                range_sampled_points = [20,20])
-    lab_name = "../data/Decathlon/labelsTr/spleen_2.nii.gz"
+   
+    lab_name = "../data/Synapse/labelsTr/label0003.nii.gz"
     label = nib.load(lab_name).get_fdata()
+    label[~((label==2) | (label==3))] = 0
+    label[((label==2) | (label==3))] = 1
     label = cv2.resize(label,dsize=(256,256))
     # label = torch.from_numpy(label).permute(2,0,1)
+    
+    
+    pointMaker = pointSimulator(shape=label.shape,
+                                range_sampled_points = [20,20])
     
     # n = 1000
     # t = time.time()
@@ -97,7 +102,7 @@ if __name__=="__main__":
     indices = pointMaker.centers
     
 
-    
+    fig = plt.figure(figsize=(10,10))
     for i in range(4):
         plt.subplot(2,2,i+1)
         point_g = point_vol[:,:,indices[i][-1]].copy()
@@ -109,5 +114,5 @@ if __name__=="__main__":
         im[:,:,1] = point_g
         im[:,:,2] = point_b
         plt.imshow(im)
-
+    plt.show()
     
