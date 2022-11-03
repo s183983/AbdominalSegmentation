@@ -83,6 +83,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         
         if args.training.do_pointSimulation:
             self.pointSimulator = pointSimulator(**vars(args.pointSim))
+            self.pointSimultionProb = args.training.do_pointSimulation
         else:
             self.pointSimulator = None
 
@@ -166,7 +167,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         
         
         if self.pointSimulator is not None:
-            if np.random.random()>0.3 and self.mode=="train":
+            if np.random.random()<self.pointSimultionProb and self.mode=="train":
                 point_vol = torch.from_numpy(self.pointSimulator(label))
             else:
                 point_vol = torch.zeros_like(image)

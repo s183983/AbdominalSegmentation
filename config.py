@@ -46,7 +46,7 @@ def get_args(name="default",dict_mode=False):
                     "datasets": "preprocessed_Synapse", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
                     "dataset_p": None,
                     "weight_mode_loss": None,
-                    "do_pointSimulation": False,
+                    "do_pointSimulation": 0.5,
                     "tissue_range": [-100,600]
                     
                 }
