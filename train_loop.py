@@ -299,7 +299,7 @@ if __name__ == "__main__":
     dl_va = sample_data(dl_va)
     
     if wandb is not None and args.wandb:
-        if os.getlogin()=="lowes":
+        if os.getlogin()=="lowes" or os.getlogin()=="s183983":
             wandb.init(project='3DUnet_onescan', entity='s183983',config=args_dict)
         else:
             wandb.init(project='3DUnet_onescan', entity='Bjonze',config=args_dict)
