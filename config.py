@@ -24,11 +24,11 @@ def get_args(name="default",dict_mode=False):
                     "upscale_mode": "NDlinear", #one of ['nearest','bilinear','bicubic','trilinear','tconv','NDlinear']
                     #'bilinear' is only for 2D, "trilinear" is only for 3D. Will automatically find the correct one with 'NDlinear'
                     "input_channels": 1, #number of excepted input channels. E.g. 3 for RGB input, 1 for greyscale.
-                    "num_blocks": 6, #One more than number of 2x downscales/upscales
-                    "num_c": [4,8,16,32,64,128], #Number of channels in the blocks at different scales
-                    "num_repeat": [1,2,2,4,4,6], #Number of repetitions of blocks at different scales
-                    "expand_ratio": [1,4,4,6,6,8], #EffecientNetv2 expansion ratio in the blocks at different scales
-                    "SE": [0,0,1,1,1,1],#bool defining if squeeze-and-excite layer be used at the end of blocks at different scales
+                    "num_blocks": 5, #One more than number of 2x downscales/upscales
+                    "num_c": [4,8,16,32,64], #Number of channels in the blocks at different scales
+                    "num_repeat": [1,2,2,4,4], #Number of repetitions of blocks at different scales
+                    "expand_ratio": [1,4,4,6,6], #EffecientNetv2 expansion ratio in the blocks at different scales
+                    "SE": [0,0,1,1,1],#bool defining if squeeze-and-excite layer be used at the end of blocks at different scales
                     "num_classes": 1,#Number of output channels (or classes)
                 },
                 "training": {
@@ -68,7 +68,13 @@ def get_args(name="default",dict_mode=False):
             shape = [192,192,128] #[256,256,128]
             args_mod = {"pointSim":{"shape": shape},
                         "training":{"reshape": shape},
-                        "unet": {"input_channels": 2}}
+                        "unet": {"input_channels": 2,
+                                "block": "ffmmmm", #one of ['f','m']. m=MBConv (seperated conv),f=FusedMBConv (normal conv)
+                                "num_blocks": 6, #One more than number of 2x downscales/upscales
+                                "num_c": [4,8,16,32,64,128], #Number of channels in the blocks at different scales
+                                "num_repeat": [1,2,2,4,4,6], #Number of repetitions of blocks at different scales
+                                "expand_ratio": [1,4,4,6,6,8], #EffecientNetv2 expansion ratio in the blocks at different scales
+                                "SE": [0,0,1,1,1,1]}}
             args_mod["training"]["max_iter"] = 25000
             args_mod["training"]["reshape_mode"] = "fixed_size"
             args_mod["training"]["do_pointSimulation"] = True
