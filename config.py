@@ -24,7 +24,7 @@ def get_args(name="default",dict_mode=False):
                     "upscale_mode": "NDlinear", #one of ['nearest','bilinear','bicubic','trilinear','tconv','NDlinear']
                     #'bilinear' is only for 2D, "trilinear" is only for 3D. Will automatically find the correct one with 'NDlinear'
                     "input_channels": 1, #number of excepted input channels. E.g. 3 for RGB input, 1 for greyscale.
-                    "num_blocks": 5, #One more than number of 2x downscales/upscales
+                    "num_blocks": 6, #One more than number of 2x downscales/upscales
                     "num_c": [4,8,16,32,64,128], #Number of channels in the blocks at different scales
                     "num_repeat": [1,2,2,4,4,6], #Number of repetitions of blocks at different scales
                     "expand_ratio": [1,4,4,6,6,8], #EffecientNetv2 expansion ratio in the blocks at different scales
