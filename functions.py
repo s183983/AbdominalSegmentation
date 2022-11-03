@@ -1,8 +1,5 @@
 import torch
-import albumentations as A #TODO
 import cv2
-# import math
-# import itertools
 import os
 from pydicom.errors import InvalidDicomError
 import pydicom as dcm
