@@ -68,6 +68,7 @@ class pointSimulator():
             points_vol[idx[0],idx[1],idx[2]] = 2*v-1
             
         self.centers = centers
+        
         return points_vol
     
     

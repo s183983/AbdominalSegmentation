@@ -38,7 +38,7 @@ def get_args(name="default",dict_mode=False):
                     "max_iter": 30000, #Number of training iterations to complete training
                     "batch": 3, #Batch size
                     "lr": 1e-5,#Learning rate
-                    "weight_decay": 1e-4,#Adam optimizer weight decay
+                    "weight_decay": 1e-3,#Adam optimizer weight decay
                     "augment": True,
                     "aug_rampup": 10000, 
                     "recon_mode": "BCE", #one of ["L1", "L2", "BCE"]
@@ -69,7 +69,7 @@ def get_args(name="default",dict_mode=False):
             args_mod = {"pointSim":{"shape": shape},
                         "training":{"reshape": shape},
                         "unet": {"input_channels": 2}}
-            args_mod["training"]["max_iter"] = 15000
+            args_mod["training"]["max_iter"] = 25000
             args_mod["training"]["reshape_mode"] = "fixed_size"
             args_mod["training"]["do_pointSimulation"] = True
             args_mod["training"]["datasets"] = "Synapse"

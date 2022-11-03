@@ -10,7 +10,6 @@ from torch import optim
 from torchvision import utils, transforms
 from tqdm import tqdm
 import _pickle as cPickle
-import albumentations as A
 from dataset_loader_v2 import CT_Dataset
 
 import warnings 
