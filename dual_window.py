@@ -232,7 +232,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
 
-    net_name = "pls_learn"
+    #net_name = "pls_learn"
     net_name = "kidneyPointSniper2000"
 
     dataset = "Synapse"    

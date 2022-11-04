@@ -22,13 +22,15 @@ from functions import (
     load_state_dict_loose,
     fxn,
     HiddenPrints,
-    saveTestSample
+    saveTestSample,
+    pointSimulator2
     )
 from config import (
     get_args,
     update_args,
     )
 from model_unet_3d import UNet3D #AbstractUNet
+from point_sim import pointSimulator
 with HiddenPrints():
     import numpy as np    
 
@@ -73,20 +75,30 @@ def train_classifier(args, net, optim_net, start_iter,
     losses_10k_reset = {"loss_vali": {}, "loss_vali_ite": {}, "loss_vali_no_ite": {},
                    "loss_train": {}, "loss_train_ite": {}, "loss_train_no_ite": {},}
     losses_10k = copy.deepcopy(losses_10k_reset)
+    pointMaker = pointSimulator2()
     for idx in pbar:
         i = idx + start_iter
         
         if i > args.training.max_iter:
             print("Done!")
             break
+        
         net.train()
         img, label_gt = next(dl_tr)
         # print("fetched data")
         img = img.to(device, dtype=torch.float)
         label_gt = label_gt.to(device, dtype=torch.float)
-
+        ite_bool_train = np.random.rand()<0.1 and i>=2000
         
-        label_gt = (label_gt>eps).type(torch.float)        
+        with torch.no_grad():
+            if ite_bool_train:
+                label_pred = net(img)
+                point_vol = torch.from_numpy(pointSimulator2(label_gt = label_gt, label_pred = label_pred))
+                img[:,1,:,:] = point_vol.permute(0,3,1,2)
+        
+        
+        
+        label_gt = (label_gt>eps).type(torch.float)       
         label_pred = net(img)
         # print("doing pred")
         loss_net = loss_func(label_gt,label_pred,
@@ -119,9 +131,13 @@ def train_classifier(args, net, optim_net, start_iter,
                     img, label_gt = next(dl_va)
                     img = img.to(device, dtype=torch.float)
                     label_gt = label_gt.to(device, dtype=torch.float)
-
+                    if ite_bool_train:
+                        label_pred = net(img)
+                        point_vol = torch.from_numpy(pointSimulator2(label_gt = label_gt, label_pred = label_pred))
+                        img[:,1,:,:] = point_vol.permute(0,3,1,2)
+                        
+                    img = torch.stack((img, point_vol)).permute(0,3,1,2)
                     label_gt = (label_gt>eps).type(torch.float)
-                    
                     label_pred = net(img)
                     
                     loss_vali_tmp = loss_func(label_gt, label_pred, 

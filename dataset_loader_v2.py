@@ -159,7 +159,9 @@ class CT_Dataset(torch.utils.data.Dataset):
         else:
             aug_batch = {"image": image, "label": label}
         
-        im_min, im_max = np.quantile(image,[0.001,0.999])
+        # im_min, im_max = np.quantile(image,[0.001,0.999])
+        # image = (np.clip((aug_batch["image"]-im_min)/(im_max-im_min),0,1)*2-1).astype(np.float32)
+        im_min, im_max = self.tissue_range
         image = (np.clip((aug_batch["image"]-im_min)/(im_max-im_min),0,1)*2-1).astype(np.float32)
         image = torch.from_numpy(image)
         # image = torch.from_numpy(aug_batch["image"]).permute(2,0,1)*2-1 #/255*2-1

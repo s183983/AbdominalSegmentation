@@ -271,3 +271,22 @@ ax[0,0].imshow(np.squeeze(image[:,:,s]))
 ax[0,1].imshow(np.squeeze(aug_image[:,:,s]))
 ax[1,0].imshow(np.squeeze(mask[:,:,s]))
 ax[1,1].imshow(np.squeeze(aug_mask[:,:,s]))
+#%%
+from functions import pointSimulator2
+import matplotlib.pyplot as plt 
+lab_name = "../data/Synapse/labelsTr/label0003.nii.gz"
+label = nib.load(lab_name).get_fdata()
+label[~((label==2) | (label==3))] = 0
+label[((label==2) | (label==3))] = 1
+label = cv2.resize(label,dsize=(256,256), interpolation = cv2.INTER_NEAREST)
+label = label[:,:,120]
+pred = label.copy()
+pred[150:180,80:120]=0
+pred[180:200,120:140] = 1 
+#plt.imshow(pred)
+# label = torch.from_numpy(label).permute(2,0,1)
+
+#%%
+pointMaker = pointSimulator2(shape=label.shape,
+                            range_sampled_points = [20,20])
+pointMaker(label_pred = pred, label_gt = label)
