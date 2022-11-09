@@ -81,11 +81,11 @@ class CT_Dataset(torch.utils.data.Dataset):
                        "LANCZOS4": cv2.INTER_LANCZOS4,}
         self.interp_modes = [interp_dict[i_m.upper()] for i_m in interp_mode]
         
-        if args.training.do_pointSimulation:
-            self.pointSimulator = pointSimulator(**vars(args.pointSim))
-            self.pointSimultionProb = args.training.do_pointSimulation
-        else:
-            self.pointSimulator = None
+        # if args.training.do_pointSimulation:
+        #     self.pointSimulator = pointSimulator(**vars(args.pointSim))
+        #     self.pointSimultionProb = args.training.do_pointSimulation
+        # else:
+        self.pointSimulator = None
 
     def __len__(self):
         return len(self.data_list)
@@ -98,7 +98,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         # labs = os.listdir(self.label_path)[idx]
         
         img_name = self.data_list[idx]
-        lab_name = os.path.join(self.label_path, os.path.basename(img_name)).replace('img','label')
+        lab_name = os.path.join(self.label_path, os.path.basename(img_name))#.replace('img','label')
         
         # img_name = os.path.join(self.data_path, imgs)
         # lab_name = os.path.join(self.label_path, labs)
@@ -121,8 +121,8 @@ class CT_Dataset(torch.utils.data.Dataset):
             im_min, im_max = self.tissue_range
             image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)
         elif self.datasets == "preprocessed_Decathlon" or "preprocessed_Synapse":
-            image = np.load(img_name)/255
-            label = np.load(lab_name)/255
+            image = np.load(img_name)#/255
+            label = np.load(lab_name)#/255
         
         if self.reshape_mode == "padding":
             if self.reshape is not None:

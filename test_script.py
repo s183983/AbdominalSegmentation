@@ -7,6 +7,7 @@ from pydicom.errors import InvalidDicomError
 from vtk.util.numpy_support import numpy_to_vtk
 import vtk 
 import torchio as tio
+from torch import nn 
 from functions import (
     num_of_params,
     sample_data,
@@ -15,7 +16,8 @@ from functions import (
     get_transform_tr,
     load_state_dict_loose,
     crop_CT,
-    get_augmentation
+    get_augmentation,
+    pointSimulator2
     )
 from config import (
     get_args,
@@ -23,7 +25,7 @@ from config import (
     )
 from model_unet_3d import UNet3D
 import cv2
-
+from dataset_loader_v2 import CT_Dataset
 
 #root = "C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/"
 #%%
@@ -290,3 +292,40 @@ pred[180:200,120:140] = 1
 pointMaker = pointSimulator2(shape=label.shape,
                             range_sampled_points = [20,20])
 pointMaker(label_pred = pred, label_gt = label)
+#%%
+if __name__ ==  '__main__':
+    device = "cuda"
+    ROOT = "../"
+    MODEL = '../runs/pls_learn/checkpoint/'
+    check_point_name = os.path.join(ROOT, MODEL)
+    name = os.path.join(MODEL, "030000.pt")
+    net_name = 'pls_learn'
+    device = "cuda"
+    arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
+    #args = get_args(name=arg_name[:-1])
+    args = get_args(name=arg_name)
+    transform_tr = False
+    ds_tr = CT_Dataset(mode="train",
+                         data_path="../data",
+                         transform=transform_tr,
+                         reshape = args.training.reshape,
+                         reshape_mode = args.training.reshape_mode,
+                         datasets = args.training.datasets,
+                         interp_mode = args.training.interp_mode)
+    dl_tr = torch.utils.data.DataLoader(ds_tr, batch_size=args.training.batch, drop_last=True,num_workers=2)
+    dl_tr = sample_data(dl_tr)
+    #%%
+    img, label_gt = next(dl_tr)
+    # for batch in dl_tr:
+    #     img, label_gt = batch
+
+    img = img.to(device, dtype=torch.float)
+    with torch.no_grad():
+        net = UNet3D(**vars(args.unet)).to(device)
+        ckpt = torch.load(name, map_location=lambda storage, loc: storage)
+        net.load_state_dict(ckpt["net"])
+        net.eval()
+        m = nn.Sigmoid()
+        outpred = m(net(img))
+        
+

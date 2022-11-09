@@ -141,6 +141,7 @@ def loss_func(gt,
                         )
         else:
             raise ValueError("Did not recognize weight_mode: ",weight_mode)
+            # ((H+1)/2-p)*abs(H) != 0
         
         
     if recon_mode=="L1":
@@ -368,7 +369,7 @@ class pointSimulator2():
             
 
         
-        n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
+       
         TH = 0.5
         label_pred = (label_pred>TH).astype(int)
         label_gt = label_gt.astype(int)
@@ -376,39 +377,42 @@ class pointSimulator2():
         im_diff = label_gt - label_pred
         diff_gt = im_diff>0
         diff_pred = im_diff<0
-        nnz_slices = im_diff.nonzero()[-1]
+        points_vol = np.zeros(diff_pred.shape).astype(np.float32)
         
-        
-        slices = np.random.choice(nnz_slices, n_points) 
-        
-        # print("Simulating",n_points)
-        
-        centers = []
-        
-        values = []
-        for slice_idx in slices:
-            if np.random.randint(diff_gt[:,:,slice_idx].sum()+diff_pred[:,:,slice_idx].sum())<diff_gt.sum():
-                dist_im = distance_transform_edt(np.pad(diff_gt, [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
-            else:
-                dist_im = distance_transform_edt(np.pad(diff_pred, [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+        for i in range(diff_pred.shape[0]):
+            n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
+            nnz_slices = im_diff.nonzero()[-1]
             
-            tmp = dist_im.flatten()
-            idx = np.random.choice(np.arange(tmp.size), size = 1, p=tmp/tmp.sum())
-            point = np.asarray(np.unravel_index(idx, label_gt.shape)).T
-
-            center = np.array([point[0][0], point[0][1]])
-            centers.append(np.append(center,slice_idx))
-            values.append(im_diff[point[0][0],point[0][1], slice_idx])
             
-        # print(centers)
-        
-        points_vol = np.zeros(self.shape).astype(np.float32)
-        
-        for c,v in zip(centers,values):
-            idx = c.reshape(3,1)+self.sphere_nnz
-            points_vol[idx[0],idx[1],idx[2]] = v
+            slices = np.random.choice(nnz_slices, n_points) 
             
-        self.centers = centers
+            # print("Simulating",n_points)
+            
+            centers = []
+            
+            values = []
+            for slice_idx in slices:
+                if np.random.randint(diff_gt[i,:,:,:,slice_idx].sum()+diff_pred[i,:,:,:,slice_idx].sum())<diff_gt[i,:,:,:,slice_idx].sum():
+                    dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                else:
+                    dist_im = distance_transform_edt(np.squeeze(np.pad(diff_pred[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                
+                tmp = dist_im.flatten()
+                idx = np.random.choice(np.arange(tmp.size), size = 1, p=tmp/tmp.sum())
+                point = np.asarray(np.unravel_index(idx, dist_im.shape)).T
+        
+                center = np.array([point[0][0], point[0][1]])
+                centers.append(np.append(center,slice_idx))
+                values.append(im_diff[i,:, point[0][0],point[0][1], slice_idx])
+                
+            # print(centers)
+            
+            
+            for c,v in zip(centers,values):
+                idx = c.reshape(3,1)+self.sphere_nnz
+                points_vol[i,:, idx[0],idx[1],idx[2]] = v
+                
+            self.centers = centers
         return points_vol
     
     

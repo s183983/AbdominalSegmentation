@@ -43,10 +43,10 @@ def get_args(name="default",dict_mode=False):
                     "aug_rampup": 10000, 
                     "recon_mode": "BCE", #one of ["L1", "L2", "BCE"]
                     "pretrain_name_ite": None,
-                    "datasets": "preprocessed_Synapse", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
+                    "datasets": "Synapse", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
                     "dataset_p": None,
                     "weight_mode_loss": None,
-                    "do_pointSimulation": 0.5,
+                    "do_pointSimulation": False,
                     "tissue_range": [-100,600]
                     
                 }

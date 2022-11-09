@@ -11,7 +11,8 @@ from functions import (
     load_state_dict_loose,
     fxn,
     HiddenPrints,
-    crop_CT
+    crop_CT, 
+    pointSimulator2
     )
 from config import (
     get_args,
@@ -22,7 +23,7 @@ from dataset_loader_v2 import CT_Dataset
 import matplotlib.pyplot as plt 
 with HiddenPrints():
     import numpy as np    
-
+#%%
 if __name__ ==  '__main__':
     device = "cuda"
     ROOT = "../"
@@ -44,11 +45,9 @@ if __name__ ==  '__main__':
                          interp_mode = args.training.interp_mode)
     dl_tr = torch.utils.data.DataLoader(ds_tr, batch_size=args.training.batch, drop_last=True,num_workers=2)
     dl_tr = sample_data(dl_tr)
-    #%%
     img, label_gt = next(dl_tr)
     # for batch in dl_tr:
     #     img, label_gt = batch
-
     img = img.to(device, dtype=torch.float)
     with torch.no_grad():
         net = UNet3D(**vars(args.unet)).to(device)
@@ -57,8 +56,8 @@ if __name__ ==  '__main__':
         net.eval()
         m = nn.Sigmoid()
         outpred = m(net(img))
-        
-    s_n = 60
+    #%%    
+    s_n = 100
     fig, ax = plt.subplots(1,3)    
     ax[0].imshow(((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))>0.5)
     ax[0].set_title('output pred')
@@ -66,6 +65,26 @@ if __name__ ==  '__main__':
     ax[1].set_title('GT')
     ax[2].imshow((np.squeeze(img[1,:,s_n,:,:].cpu().detach())).permute(1,0))
     ax[2].set_title('GT IMG')
+#%%
+ps = pointSimulator2(shape = [256,256,128],
+                     radius = 1,
+                     sphere_size = (5,2), 
+                     range_sampled_points = [2, 10])
+ps(label_pred = outpred, label_gt = label_gt)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%%
 # transform_tr = False
 # ds_tr = CT_Dataset(mode="train",
