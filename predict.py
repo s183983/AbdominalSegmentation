@@ -23,7 +23,7 @@ from dataset_loader_v2 import CT_Dataset
 import matplotlib.pyplot as plt 
 with HiddenPrints():
     import numpy as np    
-#%%
+    
 if __name__ ==  '__main__':
     device = "cuda"
     ROOT = "../"
@@ -55,8 +55,7 @@ if __name__ ==  '__main__':
         net.load_state_dict(ckpt["net"])
         net.eval()
         m = nn.Sigmoid()
-        outpred = m(net(img))
-    #%%    
+        outpred = m(net(img)) 
     s_n = 100
     fig, ax = plt.subplots(1,3)    
     ax[0].imshow(((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))>0.5)
@@ -67,9 +66,9 @@ if __name__ ==  '__main__':
     ax[2].set_title('GT IMG')
 #%%
 ps = pointSimulator2(shape = [256,256,128],
-                     radius = 1,
-                     sphere_size = (5,2), 
-                     range_sampled_points = [2, 10])
+                      radius = 1,
+                      sphere_size = (5,2), 
+                      range_sampled_points = [2, 10])
 ps(label_pred = outpred, label_gt = label_gt)
 
 

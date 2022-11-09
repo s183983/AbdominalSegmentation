@@ -29,19 +29,22 @@ class CT_Dataset(torch.utils.data.Dataset):
     
         if mode=="train" and (datasets=="Decathlon" or datasets=="Decathlon1" or datasets=="Synapse"):
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
-            self.label_path = os.path.join(data_path, datasets, "labelsTr")
             self.data_list = glob.glob(os.path.join(self.data_path,"*.nii*"))
+            self.label_path = os.path.join(data_path, datasets, "labelsTr")
+            self.label_list = glob.glob(os.path.join(self.label_path,"*.nii*"))
             
         elif mode=="test" and (datasets=="Decathlon"or datasets=="Synapse"):
             # self.data_path = os.path.join(data_path+datasets, "imagesTs")
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
-            self.label_path = os.path.join(data_path, datasets, "labelsTr")
             self.data_list = glob.glob(os.path.join(self.data_path,"*.nii*"))
+            self.label_path = os.path.join(data_path, datasets, "labelsTr")
+            self.label_list = glob.glob(os.path.join(self.label_path,"*.nii*"))
             
         elif mode=="train" and datasets.find("preprocessed")!=-1:
             self.data_path = os.path.join(data_path, datasets, "imagesTr")
-            self.label_path = os.path.join(data_path, datasets, "labelsTr")
             self.data_list = glob.glob(os.path.join(self.data_path,"*.npy*"))
+            self.label_path = os.path.join(data_path, datasets, "labelsTr")
+            self.label_list = glob.glob(os.path.join(self.label_path,"*.npy*"))
         
         elif mode=="test" and datasets=="preprocessed_Decathlon":
             self.data_path = os.path.join(data_path+datasets, "imagesTs")
@@ -98,7 +101,8 @@ class CT_Dataset(torch.utils.data.Dataset):
         # labs = os.listdir(self.label_path)[idx]
         
         img_name = self.data_list[idx]
-        lab_name = os.path.join(self.label_path, os.path.basename(img_name)).replace('img','label')
+        lab_name = self.label_list[idx]
+        #lab_name = os.path.join(self.label_path, os.path.basename(img_name)).replace('img','label')
         # self.img_name = img_name
         # img_name = os.path.join(self.data_path, imgs)
         # lab_name = os.path.join(self.label_path, labs)

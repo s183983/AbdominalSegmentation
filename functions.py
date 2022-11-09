@@ -395,13 +395,14 @@ class pointSimulator2():
             # print("Simulating",n_points)
             
             centers = []
+
             
             values = []
             for slice_idx in slices:
                 if np.random.randint(diff_gt[i,:,:,:,slice_idx].sum()+diff_pred[i,:,:,:,slice_idx].sum())<diff_gt[i,:,:,:,slice_idx].sum():
                     dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                 else:
-                    dist_im = distance_transform_edt(np.squeeze(np.pad(diff_pred[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                    dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                 
                 tmp = dist_im.flatten()
                 idx = np.random.choice(np.arange(tmp.size), size = 1, p=tmp/tmp.sum())
@@ -416,7 +417,7 @@ class pointSimulator2():
             
             for c,v in zip(centers,values):
                 idx = c.reshape(3,1)+self.sphere_nnz
-                points_vol[i,:, idx[0],idx[1],idx[2]] = v
+                points_vol[i, :, idx[0], idx[1], idx[2]] = v
                 
             self.centers = centers
         return points_vol

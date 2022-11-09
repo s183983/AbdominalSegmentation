@@ -94,7 +94,7 @@ def train_classifier(args, net, optim_net, start_iter,
             if ite_bool_train:
                 label_pred = net(img)
                 point_vol = torch.from_numpy(pointSimulator2(label_gt = label_gt, label_pred = label_pred))
-                img[:,1,:,:] = point_vol.permute(0,3,1,2)
+                img[:,1,:,:] = point_vol.permute(0,1,4,2,3)
         
         
         
