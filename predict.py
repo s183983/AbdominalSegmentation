@@ -64,7 +64,7 @@ if __name__ ==  '__main__':
     ax[1].set_title('GT')
     ax[2].imshow((np.squeeze(img[1,:,s_n,:,:].cpu().detach())).permute(1,0))
     ax[2].set_title('GT IMG')
-#%%
+    #%%
 ps = pointSimulator2(shape = [256,256,128],
                       radius = 1,
                       sphere_size = (5,2), 

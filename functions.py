@@ -403,6 +403,11 @@ class pointSimulator2():
                     dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                 else:
                     dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                s1, s2 = dist_im.shape
+                dist_im[0:self.radius,:] = 0
+                dist_im[:,0:self.radius] = 0
+                dist_im[(s1-self.radius):s1,:] = 0
+                dist_im[:,(s2-self.radius):s2] = 0
                 
                 tmp = dist_im.flatten()
                 idx = np.random.choice(np.arange(tmp.size), size = 1, p=tmp/tmp.sum())
