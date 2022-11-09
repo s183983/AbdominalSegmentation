@@ -43,12 +43,12 @@ import SimpleITK as sitk
 
 if __name__ ==  '__main__':
     
-    net_name = 'kidneyPointSniper2000'
+    net_name = "kidneyPointSniper2000"
     
     device = "cuda"
     arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
     #args = get_args(name=arg_name[:-1])
-    args = get_args(name=arg_name)
+    args = get_args(name=net_name)
     
     # image = tio.ScalarImage(os.path.join(root, "imagesTr/spleen_32.nii.gz"))
     # resize = tio.Resize([128,128,100])

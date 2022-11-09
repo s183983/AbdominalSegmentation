@@ -109,7 +109,8 @@ def sample_data(loader):
 def loss_func(gt,
               pred,
               recon_mode="BCE",
-              weight_mode=None):
+              weight_mode=None,
+              point = None):
     if weight_mode is None:
         weight = 1
     else:
@@ -151,6 +152,11 @@ def loss_func(gt,
     elif recon_mode=="BCE":
         bce_func = torch.nn.BCEWithLogitsLoss(reduction='none')
         recon_loss = (bce_func(pred,gt.bernoulli())*weight).mean()
+    elif recon_mode=="BCE_Point":
+        bce_func = torch.nn.BCEWithLogitsLoss(reduction='none')
+        bce_loss = (bce_func(pred,gt.bernoulli())*weight).mean()
+        point_loss = (( (point*2-1-pred)*point.abs())**2).mean()
+        recon_loss = bce_loss + point_loss
     else:
         raise ValueError("Recon_mode must be one of ['L1', 'L2', 'BCE'] not ", recon_mode)
         

@@ -103,7 +103,8 @@ def train_classifier(args, net, optim_net, start_iter,
         # print("doing pred")
         loss_net = loss_func(label_gt,label_pred,
                              recon_mode=args.training.recon_mode,
-                             weight_mode=args.training.weight_mode_loss)
+                             weight_mode=args.training.weight_mode_loss,
+                             point = img[:,1].unsqueeze(1))
         # print("pred done")
         net.zero_grad()
         loss_net.backward()
@@ -142,7 +143,8 @@ def train_classifier(args, net, optim_net, start_iter,
                     
                     loss_vali_tmp = loss_func(label_gt, label_pred, 
                                               recon_mode=args.training.recon_mode,
-                                              weight_mode=args.training.weight_mode_loss).item()
+                                              weight_mode=args.training.weight_mode_loss,
+                                              point = img[:,1].unsqueeze(1)).item()
                     loss_vali += loss_vali_tmp
 
                     loss_vali_no_ite += loss_vali_tmp

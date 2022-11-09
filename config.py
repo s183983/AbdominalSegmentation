@@ -64,6 +64,18 @@ def get_args(name="default",dict_mode=False):
         elif name=="pls_learn":
             args_mod = {"training":{"datasets": "preprocessed_Synapse"}}
             args_mod["training"]["max_iter"] = 20000
+        elif name=="kidneyPointSniper2000":
+            shape = [192,192,128] #[256,256,128]
+            args_mod = {"pointSim":{"shape": shape},
+                        "training":{"reshape": shape},
+                        "unet": {"input_channels": 2,
+                                }}
+            args_mod["training"]["max_iter"] = 25000
+            args_mod["training"]["reshape_mode"] = "fixed_size"
+            args_mod["training"]["do_pointSimulation"] = True
+            args_mod["training"]["datasets"] = "Synapse"
+            args_mod["training"]["batch"] = 2
+            args_mod["training"]["lr"] = 2e-4
         elif name.find("kidneyPointSniper") != -1:
             shape = [192,192,128] #[256,256,128]
             args_mod = {"pointSim":{"shape": shape},

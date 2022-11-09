@@ -173,7 +173,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             ct_list = glob.glob(os.path.join(folder_name,"*.nii.gz"))
             # random.shuffle(ct_list)
             ct_list.sort()
-            vol_name = ct_list.pop(1)
+            vol_name = ct_list.pop(0)
             sitk_t1 = sitk.ReadImage(vol_name)
             spacing = sitk_t1.GetSpacing()
             ct_vol = sitk.GetArrayFromImage(sitk_t1)
@@ -451,7 +451,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             
             point = PyQt5.QtCore.QPoint((event.x()-self.padding.x())/self.size.width() * self.point_shape[1]/self.zoomFactor,
                     (event.y()-self.padding.y())/self.size.height() * self.point_shape[0]/self.zoomFactor)
-            center = np.array([point.x(),point.y(),self.cur_slice])
+            center = np.array([point.y(),point.x(),self.cur_slice])
             sign = 1 if event.button()==PyQt5.QtCore.Qt.LeftButton else -1
             self.updatePointVol(center,sign)
             self.predict()
@@ -627,8 +627,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
                               np.arange(-self.ct_shape[1]//2,self.ct_shape[1]//2),
                               np.arange(-self.ct_shape[0]//2,self.ct_shape[0]//2))
         
-        radiusXY = self.penWidth*self.ct_shape[2]/self.resize_shape[0]*0.5
-        radiusZ = self.penWidth*self.ct_shape[2]/self.resize_shape[0]*0.5 * self.spacing[0]/self.spacing[2]
+        pw = int(self.size.width()/40)
+        radiusXY = pw*self.ct_shape[2]/self.resize_shape[0]*0.5
+        radiusZ = pw*self.ct_shape[2]/self.resize_shape[0]*0.5 * self.spacing[0]/self.spacing[2]
         
         self.sphere = (np.power((X)/radiusXY,2)
                 +np.power((Y)/radiusXY,2)
@@ -707,7 +708,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         
     def predict(self, init=False):
         
-        thresh = 0.25
+        thresh = 0.15
         
         if init and self.args.training.do_pointSimulation:
             sphere_size = self.args.pointSim.sphere_size
@@ -832,7 +833,18 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             self.update()
             self.showInfo(f'Changed pen widht to {self.penWidth}')
         elif key==PyQt5.QtCore.Qt.Key_S: # s
-            self.saveOutcome()
+            self.segmentation_mode = True
+            self.label = 1
+            self.penWidth = 5
+            self.annotationOpacity = 0.4
+            self.penOpacity = 0.7
+            self.showInfo(f'Changed to segmentation mode')
+        elif key==PyQt5.QtCore.Qt.Key_D:
+            self.label = 1
+            self.penWidth = int(self.size.width()/40)
+            self.annotationOpacity = 0.4
+            self.penOpacity = 0.4
+            self.showInfo(f'Changed to drawing mode')
         elif key==PyQt5.QtCore.Qt.Key_O: # o
             self.overlay = (self.overlay+1)%len(self.overlays)
             self.update()
