@@ -91,11 +91,22 @@ def get_args(name="default",dict_mode=False):
             args_mod["training"]["reshape_mode"] = "fixed_size"
             args_mod["training"]["do_pointSimulation"] = True
             args_mod["training"]["datasets"] = "Synapse"
-            args_mod["training"]["batch"] = 2
+            args_mod["training"]["batch"] = 3
             args_mod["training"]["lr"] = 2e-4
         else:
             raise ValueError('Invalid model name')
             
+        if name.lower().find("debug") != -1:
+            args_mod["wandb"] = False
+            args_mod["unet"] = {"input_channels": 2,
+                    "block": "ffmm", #one of ['f','m']. m=MBConv (seperated conv),f=FusedMBConv (normal conv)
+                    "num_blocks": 4, #One more than number of 2x downscales/upscales
+                    "num_c": [4,8,16,32], #Number of channels in the blocks at different scales
+                    "num_repeat": [1,2,2,4], #Number of repetitions of blocks at different scales
+                    "expand_ratio": [1,4,4,6], #EffecientNetv2 expansion ratio in the blocks at different scales
+                    "SE": [0,0,1,1]}
+            args_mod["training"]["batch"] = 1
+        
         if name_override is not None:
             args_mod["name"] = name_override
         else:

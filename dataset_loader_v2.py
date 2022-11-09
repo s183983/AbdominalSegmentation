@@ -84,11 +84,11 @@ class CT_Dataset(torch.utils.data.Dataset):
                        "LANCZOS4": cv2.INTER_LANCZOS4,}
         self.interp_modes = [interp_dict[i_m.upper()] for i_m in interp_mode]
         
-        # if args.training.do_pointSimulation:
-        #     self.pointSimulator = pointSimulator(**vars(args.pointSim))
-        #     self.pointSimultionProb = args.training.do_pointSimulation
-        # else:
-        self.pointSimulator = None
+        if args.training.do_pointSimulation:
+            self.pointSimulator = pointSimulator(**vars(args.pointSim))
+            self.pointSimultionProb = args.training.do_pointSimulation
+        else:
+            self.pointSimulator = None
 
     def __len__(self):
         return len(self.data_list)

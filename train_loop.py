@@ -75,7 +75,7 @@ def train_classifier(args, net, optim_net, start_iter,
     losses_10k_reset = {"loss_vali": {}, "loss_vali_ite": {}, "loss_vali_no_ite": {},
                    "loss_train": {}, "loss_train_ite": {}, "loss_train_no_ite": {},}
     losses_10k = copy.deepcopy(losses_10k_reset)
-    pointMaker = pointSimulator2()
+    pointMaker = pointSimulator2(**vars(args.pointSim))
     for idx in pbar:
         i = idx + start_iter
         
@@ -88,13 +88,13 @@ def train_classifier(args, net, optim_net, start_iter,
         # print("fetched data")
         img = img.to(device, dtype=torch.float)
         label_gt = label_gt.to(device, dtype=torch.float)
-        ite_bool_train = np.random.rand()<0.1 and i>=2000
+        ite_bool_train = 1#np.random.rand()<0.1 and i>=2000
         
         with torch.no_grad():
             if ite_bool_train:
                 label_pred = net(img)
-                point_vol = torch.from_numpy(pointSimulator2(label_gt = label_gt, label_pred = label_pred))
-                img[:,1,:,:] = point_vol#.permute(0,1,4,2,3)
+                point_vol = torch.from_numpy(pointMaker(label_gt = label_gt, label_pred = label_pred))
+                img[:,1,:,:] = point_vol#.permute(0,4,1,2,3)
         
         
         
@@ -134,10 +134,10 @@ def train_classifier(args, net, optim_net, start_iter,
                     label_gt = label_gt.to(device, dtype=torch.float)
                     if ite_bool_train:
                         label_pred = net(img)
-                        point_vol = torch.from_numpy(pointSimulator2(label_gt = label_gt, label_pred = label_pred))
-                        img[:,1,:,:] = point_vol#.permute(0,1,4,2,3)
+                        point_vol = torch.from_numpy(pointMaker(label_gt = label_gt, label_pred = label_pred))
+                        img[:,1,:,:] = point_vol.permute(0,3,1,2)
                         
-                    img = torch.stack((img, point_vol))#.permute(0,3,1,2)
+                    # img = torch.stack((img, point_vol)).permute(0,3,1,2)
                     label_gt = (label_gt>eps).type(torch.float)
                     label_pred = net(img)
                     
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, 
-                        default='default', 
+                        default='kidneyPointSniperDebug', 
                         help="name of the model")
     
     args_name = parser.parse_args()

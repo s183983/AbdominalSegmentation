@@ -349,6 +349,8 @@ class pointSimulator2():
                  radius = 1,
                  sphere_size = (5,2),
                  range_sampled_points = [2, 10],
+                 border_mean = None,
+                 border_p = None
                  ):
         # [H,W,D]
         self.shape = shape 
