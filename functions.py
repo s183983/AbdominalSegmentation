@@ -386,47 +386,49 @@ class pointSimulator2():
         diff_gt = im_diff>0
         diff_pred = im_diff<0
         points_vol = np.zeros(diff_pred.shape).astype(np.float32)
+        batch_ims_diff = np.reshape(im_diff,[3,1*128*128*128]).sum(axis=1)
         
         for i in range(diff_pred.shape[0]):
-            n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
-            nnz_slices = im_diff.nonzero()[-1]
-            
-            
-            slices = np.random.choice(nnz_slices, n_points) 
-            
-            # print("Simulating",n_points)
-            
-            centers = []
-
-            
-            values = []
-            for slice_idx in slices:
-                if np.random.randint(diff_gt[i,:,:,:,slice_idx].sum()+diff_pred[i,:,:,:,slice_idx].sum())<diff_gt[i,:,:,:,slice_idx].sum():
-                    dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
-                else:
-                    dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
-                s1, s2 = dist_im.shape
-                dist_im[0:self.radius,:] = 0
-                dist_im[:,0:self.radius] = 0
-                dist_im[(s1-self.radius):s1,:] = 0
-                dist_im[:,(s2-self.radius):s2] = 0
+            if batch_ims_diff[i]>(np.power(128,3)*1e-4):
+                n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
+                nnz_slices = im_diff.nonzero()[-1]
                 
-                tmp = dist_im.flatten()
-                idx = np.random.choice(np.arange(tmp.size), size = 1, p=tmp/tmp.sum())
-                point = np.asarray(np.unravel_index(idx, dist_im.shape)).T
+                
+                slices = np.random.choice(nnz_slices, n_points) 
+                
+                # print("Simulating",n_points)
+                
+                centers = []
         
-                center = np.array([point[0][0], point[0][1]])
-                centers.append(np.append(center,slice_idx))
-                values.append(im_diff[i,:, point[0][0],point[0][1], slice_idx])
+                
+                values = []
+                for slice_idx in slices:
+                    if np.random.randint(diff_gt[i,:,:,:,slice_idx].sum()+diff_pred[i,:,:,:,slice_idx].sum())<diff_gt[i,:,:,:,slice_idx].sum():
+                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                    else:
+                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                    s1, s2 = dist_im.shape
+                    dist_im[0:self.radius,:] = 0
+                    dist_im[:,0:self.radius] = 0
+                    dist_im[(s1-self.radius):s1,:] = 0
+                    dist_im[:,(s2-self.radius):s2] = 0
+                    
+                    tmp = dist_im.flatten()
+                    idx = np.random.choice(np.arange(tmp.size), size = 1, p=tmp/tmp.sum())
+                    point = np.asarray(np.unravel_index(idx, dist_im.shape)).T
+            
+                    center = np.array([point[0][0], point[0][1]])
+                    centers.append(np.append(center,slice_idx))
+                    values.append(im_diff[i,:, point[0][0],point[0][1], slice_idx])
                 
             # print(centers)
             
             
-            for c,v in zip(centers,values):
-                idx = c.reshape(3,1)+self.sphere_nnz
-                points_vol[i, :, idx[0], idx[1], idx[2]] = v
-                
-            self.centers = centers
+                for c,v in zip(centers,values):
+                    idx = c.reshape(3,1)+self.sphere_nnz
+                    points_vol[i, :, idx[0], idx[1], idx[2]] = v
+                    
+                self.centers = centers
         return points_vol
     
     
