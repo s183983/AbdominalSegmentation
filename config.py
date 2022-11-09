@@ -105,7 +105,7 @@ def get_args(name="default",dict_mode=False):
                     "num_repeat": [1,2,2,4], #Number of repetitions of blocks at different scales
                     "expand_ratio": [1,4,4,6], #EffecientNetv2 expansion ratio in the blocks at different scales
                     "SE": [0,0,1,1]}
-            args_mod["training"]["batch"] = 1
+            args_mod["training"]["batch"] = 2
         
         if name_override is not None:
             args_mod["name"] = name_override
