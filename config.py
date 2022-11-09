@@ -91,7 +91,7 @@ def get_args(name="default",dict_mode=False):
             args_mod["training"]["reshape_mode"] = "fixed_size"
             args_mod["training"]["do_pointSimulation"] = True
             args_mod["training"]["datasets"] = "Synapse"
-            args_mod["training"]["batch"] = 3
+            args_mod["training"]["batch"] = 2
             args_mod["training"]["lr"] = 2e-4
         else:
             raise ValueError('Invalid model name')
