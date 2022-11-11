@@ -251,7 +251,7 @@ if __name__ == "__main__":
     
     if len(load_list)>0:
         ckpt = torch.load(load_list[-1], map_location=lambda storage, loc: storage)
-        start_iter = int(load_list[-1].split("\\")[-1][:-3])
+        start_iter = int(os.path.basename(load_list[-1]).split('.')[0])
         #args = ckpt['args']
         #args = update_args(args)
         net.load_state_dict(ckpt["net"])
