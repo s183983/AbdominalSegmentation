@@ -403,10 +403,10 @@ class pointSimulator2():
                 
                 values = []
                 for slice_idx in slices:
-                    if np.random.randint(diff_gt[i,:,:,:,slice_idx].sum()+diff_pred[i,:,:,:,slice_idx].sum())<diff_gt[i,:,:,:,slice_idx].sum():
-                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                    if np.random.randint(diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum())<diff_gt[i,:,slice_idx,:,:].sum():
+                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                     else:
-                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,:,:,:,slice_idx]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,:,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                     s1, s2 = dist_im.shape
                     dist_im[:self.radius,:] = 0
                     dist_im[:,:self.radius] = 0
@@ -421,8 +421,8 @@ class pointSimulator2():
                     point = np.asarray(np.unravel_index(idx, dist_im.shape)).T
             
                     center = np.array([point[0][0], point[0][1]])
-                    centers.append(np.append(center,slice_idx))
-                    values.append(im_diff[i,:, point[0][0],point[0][1], slice_idx])
+                    centers.append(np.append(slice_idx, center))
+                    values.append(im_diff[i,:,slice_idx, point[0][0], point[0][1]])
                 
             # print(centers)
             
