@@ -387,21 +387,14 @@ class pointSimulator2():
         diff_gt = im_diff>0
         diff_pred = im_diff<0
         points_vol = np.zeros(diff_pred.shape).astype(np.float32)
-        batch_ims_diff = np.reshape(im_diff,[im_diff.shape[0],1*self.shape[0]*self.shape[1]*self.shape[2]]).sum(axis=1)
+        batch_ims_diff = np.reshape(diff_gt+diff_pred,[im_diff.shape[0],1*self.shape[0]*self.shape[1]*self.shape[2]]).sum(axis=1)
         
         for i in range(diff_pred.shape[0]):
             if batch_ims_diff[i]>((self.shape[0]*self.shape[1]*self.shape[2])*1e-4):
                 n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
-                nnz_slices = im_diff.nonzero()[2]
-                
-                
-                slices = np.random.choice(nnz_slices, n_points) 
-                
-                # print("Simulating",n_points)
-                
+                nnz_slices = im_diff[i].nonzero()[1]
+                slices = np.random.choice(nnz_slices, n_points)
                 centers = []
-        
-                
                 values = []
                 for slice_idx in slices:
                     if np.random.randint(diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum())<diff_gt[i,:,slice_idx,:,:].sum():
