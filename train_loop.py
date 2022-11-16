@@ -168,7 +168,7 @@ def train_classifier(args, net, optim_net, start_iter,
                 
         pbar.set_description(
             (
-                f"l_tr: {loss_net:.4f}; ",
+                f"l_tr: {loss_net:.4f}; "
                 f"l_vali: {loss_vali:.4f}; "
             )
         )
