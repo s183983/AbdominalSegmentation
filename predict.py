@@ -35,15 +35,18 @@ if __name__ ==  '__main__':
     arg_name = ''.join(filter(lambda x: not x.isdigit(), net_name))
     #args = get_args(name=arg_name[:-1])
     args = get_args(name=arg_name)
-    transform_tr = False
+    transform_tr = False   
     ds_tr = CT_Dataset(mode="train",
-                         data_path="../data",
-                         transform=transform_tr,
+                         data_path='../data',
+                         transform=args.training.augment,
                          reshape = args.training.reshape,
                          reshape_mode = args.training.reshape_mode,
                          datasets = args.training.datasets,
-                         interp_mode = args.training.interp_mode)
-    dl_tr = torch.utils.data.DataLoader(ds_tr, batch_size=args.training.batch, drop_last=True,num_workers=2)
+                         interp_mode = args.training.interp_mode,
+                         tissue_range = args.training.tissue_range,
+                         args = args)
+    
+    dl_tr = torch.utils.data.DataLoader(ds_tr, batch_size=args.training.batch, drop_last=True,num_workers=1)
     dl_tr = sample_data(dl_tr)
     img, label_gt = next(dl_tr)
     # for batch in dl_tr:
@@ -56,6 +59,7 @@ if __name__ ==  '__main__':
         net.eval()
         m = nn.Sigmoid()
         outpred = m(net(img)) 
+#%%
     s_n = 100
     fig, ax = plt.subplots(1,3)    
     ax[0].imshow(((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))>0.5)
@@ -64,11 +68,12 @@ if __name__ ==  '__main__':
     ax[1].set_title('GT')
     ax[2].imshow((np.squeeze(img[1,:,s_n,:,:].cpu().detach())).permute(1,0))
     ax[2].set_title('GT IMG')
-    #%%
-ps = pointSimulator2(shape = [256,256,128],
+#%%    
+ps = pointSimulator2(shape = [128,128,128],
                       radius = 1,
                       sphere_size = (5,2), 
                       range_sampled_points = [2, 10])
+#input dim: (B,C,D,W,H)
 ps(label_pred = outpred, label_gt = label_gt)
 
 
@@ -84,7 +89,6 @@ ps(label_pred = outpred, label_gt = label_gt)
 
 
 
-#%%
 # transform_tr = False
 # ds_tr = CT_Dataset(mode="train",
 #                      data_path='C:/Users/lakri/Desktop/DTU/9.semester/Special Course/data/',

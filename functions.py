@@ -345,7 +345,7 @@ def saveTestSample(img, pred, label, save_name):
     
 class pointSimulator2():
     def __init__(self,
-                 shape = [256,256,128],
+                 shape = [128,128,128],
                  radius = 1,
                  sphere_size = (5,2),
                  range_sampled_points = [2, 10],
@@ -369,6 +369,7 @@ class pointSimulator2():
         3. add random noise in x and y direction, maybe between 5-50px (not in which slice it is)
         4. categorize points as in or outside the label
         5. render points in volume with a fixed radius
+        input dim: (B,C,D,H,W)
         """
         if torch.is_tensor(label_pred):
             label_pred = label_pred.cpu().detach().numpy()
@@ -391,7 +392,7 @@ class pointSimulator2():
         for i in range(diff_pred.shape[0]):
             if batch_ims_diff[i]>((self.shape[0]*self.shape[1]*self.shape[2])*1e-4):
                 n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
-                nnz_slices = im_diff.nonzero()[-1]
+                nnz_slices = im_diff.nonzero()[2]
                 
                 
                 slices = np.random.choice(nnz_slices, n_points) 

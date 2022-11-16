@@ -176,11 +176,11 @@ class CT_Dataset(torch.utils.data.Dataset):
             if np.random.random()<self.pointSimultionProb and self.mode=="train":
                 point_vol = torch.from_numpy(self.pointSimulator(label))
             else:
-                point_vol = torch.zeros_like(image)
-            image = torch.stack((image,point_vol)).permute(0,3,1,2)
+                point_vol = torch.zeros_like(image) #(C,D,W,H)
+            image = torch.stack((image,point_vol)).permute(0,3,1,2) #(C,D,W,H)
         else:
-            image = image.permute(2,0,1).unsqueeze(0)
-        label = torch.from_numpy(aug_batch["label"]).permute(2,0,1).unsqueeze(0)
+            image = image.permute(2,0,1).unsqueeze(0) #(C,D,W,H)
+        label = torch.from_numpy(aug_batch["label"]).permute(2,0,1).unsqueeze(0) #(C,D,W,H)
         
         # if not isinstance(image.dtype, torch.float):
         #     image = image.type(torch.float)
