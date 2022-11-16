@@ -355,7 +355,7 @@ class pointSimulator2():
         # [H,W,D]
         self.shape = shape 
         # for use in rg.sphere
-        self.radius = radius
+        self.radius = sphere_size[1]
         self.sphere_size = sphere_size
         self.range_sampled_points = range_sampled_points
         self.sphere = rg.sphere(sphere_size[0],sphere_size[1]).astype(int)
