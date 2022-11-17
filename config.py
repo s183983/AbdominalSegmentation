@@ -75,7 +75,7 @@ def get_args(name="default",dict_mode=False):
             args_mod["training"]["do_pointSimulation"] = True
             args_mod["training"]["datasets"] = "Synapse"
             args_mod["training"]["batch"] = 2
-            args_mod["training"]["lr"] = 2e-4
+            args_mod["training"]["lr"] = 1e-4
         elif name.find("kidneyPointSniper") != -1:
             shape = [192,192,128] #[256,256,128]
             args_mod = {"pointSim":{"shape": shape},
