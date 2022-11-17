@@ -70,7 +70,7 @@ def get_args(name="default",dict_mode=False):
                         "training":{"reshape": shape},
                         "unet": {"input_channels": 2,
                                 }}
-            args_mod["training"]["max_iter"] = 25000
+            args_mod["training"]["max_iter"] = 20000
             args_mod["training"]["reshape_mode"] = "fixed_size"
             args_mod["training"]["do_pointSimulation"] = True
             args_mod["training"]["datasets"] = "Synapse"
