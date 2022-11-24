@@ -148,11 +148,18 @@ class CT_Dataset(torch.utils.data.Dataset):
                       self.reshape[0]),interpolation=self.interp_modes[1])
             
         
+        im_min, im_max = self.tissue_range
+        image = (np.clip((image-im_min)/(im_max-im_min),0,1)).astype(np.float32)
+
         if self.transform is not None:
             data = {"image": image, "label": label}
             aug_batch = self.transform(**data)
         else:
             aug_batch = {"image": image, "label": label}
+        
+        
+        image = torch.from_numpy(aug_batch["image"])
+        image = image*2-1
      
         
         #im_min, im_max = self.tissue_range
@@ -168,9 +175,7 @@ class CT_Dataset(torch.utils.data.Dataset):
    
         # im_min, im_max = np.quantile(image,[0.001,0.999])
         # image = (np.clip((aug_batch["image"]-im_min)/(im_max-im_min),0,1)*2-1).astype(np.float32)
-        im_min, im_max = self.tissue_range
-        image = (np.clip((aug_batch["image"]-im_min)/(im_max-im_min),0,1)*2-1).astype(np.float32)
-        image = torch.from_numpy(image)
+
         # image = torch.from_numpy(aug_batch["image"]).permute(2,0,1)*2-1 #/255*2-1
         
         
