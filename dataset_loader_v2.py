@@ -96,20 +96,9 @@ class CT_Dataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-    
-        # imgs = os.listdir(self.data_path)[idx]
-        # labs = os.listdir(self.label_path)[idx]
-        
+ 
         img_name = self.data_list[idx]
         lab_name = self.label_list[idx]
-        #lab_name = os.path.join(self.label_path, os.path.basename(img_name)).replace('img','label')
-        # self.img_name = img_name
-        # img_name = os.path.join(self.data_path, imgs)
-        # lab_name = os.path.join(self.label_path, labs)
-        
-
-        # image = tio.ScalarImage(img_name)
-        # label = tio.ScalarImage(lab_name)
 
         if (self.datasets).find("preprocessed")==-1:
             img = nib.load(img_name)
@@ -120,13 +109,10 @@ class CT_Dataset(torch.utils.data.Dataset):
             if self.datasets=="Synapse":
                 label[~((label==2) | (label==3))] = 0
                 label[((label==2) | (label==3))] = 1
-            # im_min, im_max = np.quantile(image,[0.001,0.999])
-            # image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
-            #im_min, im_max = self.tissue_range
-            #image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)
+
         elif self.datasets == "preprocessed_Decathlon" or "preprocessed_Synapse":
-            image = np.load(img_name)#/255
-            label = np.load(lab_name)#/255
+            image = np.load(img_name)
+            label = np.load(lab_name)
         
         if self.reshape_mode == "padding":
             if self.reshape is not None:
@@ -157,27 +143,8 @@ class CT_Dataset(torch.utils.data.Dataset):
         else:
             aug_batch = {"image": image, "label": label}
         
-        
-        image = torch.from_numpy(aug_batch["image"])
-        image = image*2-1
-     
-        
-        #im_min, im_max = self.tissue_range
-        #image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)
-        # if np.amin(image)!= -1 or np.amax(image)!=1:
-        #     image = np.clip(image, -1000, 1000)   
-        #     image = image/1000
-        #image = image.astype('float64')
-        #labels = nib.load(lab_name)
-        #data = img.get_fdata()
-
-
-   
-        # im_min, im_max = np.quantile(image,[0.001,0.999])
-        # image = (np.clip((aug_batch["image"]-im_min)/(im_max-im_min),0,1)*2-1).astype(np.float32)
-
-        # image = torch.from_numpy(aug_batch["image"]).permute(2,0,1)*2-1 #/255*2-1
-        
+    
+        image = torch.from_numpy(aug_batch["image"]*2-1)
         
         
         if self.pointSimulator is not None:
@@ -189,15 +156,5 @@ class CT_Dataset(torch.utils.data.Dataset):
         else:
             image = image.permute(2,0,1).unsqueeze(0) #(C,D,W,H)
         label = torch.from_numpy(aug_batch["label"]).permute(2,0,1).unsqueeze(0) #(C,D,W,H)
-        
-        # if not isinstance(image.dtype, torch.float):
-        #     image = image.type(torch.float)
-        # if not isinstance(label.dtype, torch.float):
-        #     label = label.type(torch.float)
-
-        
-
-        # if self.transform:
-        #     sample = self.transform(sample)
 
         return image, label
