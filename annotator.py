@@ -708,7 +708,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         
     def predict(self, init=False):
         
-        thresh = 0.15
+        thresh = 0.5
         
         if init and self.args.training.do_pointSimulation:
             sphere_size = self.args.pointSim.sphere_size

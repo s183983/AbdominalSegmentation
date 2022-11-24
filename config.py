@@ -92,7 +92,7 @@ def get_args(name="default",dict_mode=False):
             args_mod["training"]["do_pointSimulation"] = 0.4
             args_mod["training"]["datasets"] = "Synapse"
             args_mod["training"]["batch"] = 2
-            args_mod["training"]["lr"] = 2e-4
+            args_mod["training"]["lr"] = 1e-4
             args_mod["training"]["recon_mode"] = "BCE_Point"
         else:
             raise ValueError('Invalid model name')

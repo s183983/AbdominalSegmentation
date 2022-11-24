@@ -233,7 +233,7 @@ if __name__ == "__main__":
 
 
     #net_name = "pls_learn"
-    net_name = "kidneyPointSniper2000"
+    net_name = "kidneyPointSniper4"
 
     dataset = "Synapse"    
     
