@@ -59,22 +59,23 @@ if __name__ ==  '__main__':
         net.eval()
         m = nn.Sigmoid()
         outpred = m(net(img)) 
+#%%
 
-#     s_n = 100
-#     fig, ax = plt.subplots(1,3)    
-#     ax[0].imshow(((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))>0.5)
-#     ax[0].set_title('output pred')
-#     ax[1].imshow((np.squeeze(label_gt[1,:,s_n,:,:].cpu().detach())).permute(1,0))
-#     ax[1].set_title('GT')
-#     ax[2].imshow((np.squeeze(img[1,:,s_n,:,:].cpu().detach())).permute(1,0))
-#     ax[2].set_title('GT IMG')
- 
-# ps = pointSimulator2(shape = [128,128,128],
-#                       radius = 1,
-#                       sphere_size = (5,2), 
-#                       range_sampled_points = [2, 10])
-# #input dim: (B,C,D,W,H)
-# ps(label_pred = outpred, label_gt = label_gt)
+    s_n = 100
+    fig, ax = plt.subplots(1,3)    
+    ax[0].imshow(((np.squeeze(outpred[1,:,s_n,:,:].cpu().detach())).permute(1,0))>0.5)
+    ax[0].set_title('output pred')
+    ax[1].imshow((np.squeeze(label_gt[1,:,s_n,:,:].cpu().detach())).permute(1,0))
+    ax[1].set_title('GT')
+    ax[2].imshow((np.squeeze(img[1,:,s_n,:,:].cpu().detach())).permute(1,0))
+    ax[2].set_title('GT IMG')
+#%%
+ps = pointSimulator2(shape = [128,128,128],
+                      radius = 1,
+                      sphere_size = (5,2), 
+                      range_sampled_points = [2, 10])
+#input dim: (B,C,D,W,H)
+ps(label_pred = outpred, label_gt = label_gt)
 
 
 

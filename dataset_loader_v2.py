@@ -122,8 +122,8 @@ class CT_Dataset(torch.utils.data.Dataset):
                 label[((label==2) | (label==3))] = 1
             # im_min, im_max = np.quantile(image,[0.001,0.999])
             # image = (np.clip((image-im_min)/(im_max-im_min),0,1)*255).astype(np.float32)
-            im_min, im_max = self.tissue_range
-            image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)
+            #im_min, im_max = self.tissue_range
+            #image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)
         elif self.datasets == "preprocessed_Decathlon" or "preprocessed_Synapse":
             image = np.load(img_name)#/255
             label = np.load(lab_name)#/255
@@ -148,7 +148,15 @@ class CT_Dataset(torch.utils.data.Dataset):
                       self.reshape[0]),interpolation=self.interp_modes[1])
             
         
+        if self.transform is not None:
+            data = {"image": image, "label": label}
+            aug_batch = self.transform(**data)
+        else:
+            aug_batch = {"image": image, "label": label}
+     
         
+        #im_min, im_max = self.tissue_range
+        #image = np.clip((image-im_min)/(im_max-im_min),0,1).astype(np.float32)
         # if np.amin(image)!= -1 or np.amax(image)!=1:
         #     image = np.clip(image, -1000, 1000)   
         #     image = image/1000
@@ -157,12 +165,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         #data = img.get_fdata()
 
 
-        if self.transform is not None:
-            data = {"image": image, "label": label}
-            aug_batch = self.transform(**data)
-        else:
-            aug_batch = {"image": image, "label": label}
-        
+   
         # im_min, im_max = np.quantile(image,[0.001,0.999])
         # image = (np.clip((aug_batch["image"]-im_min)/(im_max-im_min),0,1)*2-1).astype(np.float32)
         im_min, im_max = self.tissue_range
