@@ -398,6 +398,9 @@ class pointSimulator2():
                 centers = []
                 values = []
                 for slice_idx in slices:
+                    if diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum() < 1:
+                        #TODO
+                        continue
                     if np.random.randint(diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum())<diff_gt[i,:,slice_idx,:,:].sum():
                         dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                     else:
