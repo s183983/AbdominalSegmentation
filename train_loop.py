@@ -133,10 +133,11 @@ def train_classifier(args, net, optim_net, start_iter,
                     img, label_gt = next(dl_va)
                     img = img.to(device, dtype=torch.float)
                     label_gt = label_gt.to(device, dtype=torch.float)
-                    if ite_bool_train:
+                    ite_bool_val = np.random.rand()<0.1 and i>=1000
+                    if ite_bool_val:
                         label_pred = net(img)
                         point_vol = torch.from_numpy(pointMaker(label_gt = label_gt, label_pred = label_pred))
-                        img = torch.stack(img, point_vol, dim=1)
+                        img = torch.stack((img, point_vol), dim=1)
                         #img[:,1,:,:] = point_vol.squeeze(1) #.permute(0,3,1,2)
                         
                     # img = torch.stack((img, point_vol)).permute(0,3,1,2)
