@@ -41,7 +41,7 @@ def get_args(name="default",dict_mode=False):
                     "weight_decay": 1e-3,#Adam optimizer weight decay
                     "augment": True,
                     "aug_rampup": 10000, 
-                    "recon_mode": "BCE", #one of ["L1", "L2", "BCE", "BCE_Point"]
+                    "recon_mode": "BCE_Point", #one of ["L1", "L2", "BCE", "BCE_Point"]
                     "pretrain_name_ite": None,
                     "datasets": "Synapse", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
                     "dataset_p": None,

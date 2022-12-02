@@ -451,8 +451,13 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             
             point = PyQt5.QtCore.QPoint((event.x()-self.padding.x())/self.size.width() * self.point_shape[1]/self.zoomFactor,
                     (event.y()-self.padding.y())/self.size.height() * self.point_shape[0]/self.zoomFactor)
-            center = np.array([point.y(),point.x(),self.cur_slice])
+            center = np.array([point.y(),point.x(),(self.cur_slice//self.n_slices * self.point_shape[2]).astype(int)])
             sign = 1 if event.button()==PyQt5.QtCore.Qt.LeftButton else -1
+            self.label = 1 if sign==1 else 2
+            painter_scribble = self.makePainter(self.annotationPix, 
+                        self.color_picker(self.label, 
+                            (self.label>0)*self.annotationOpacity)) # the painter used for drawing        
+            painter_scribble.drawPoint(event.pos())
             self.updatePointVol(center,sign)
             self.predict()
             self.show_slice()
@@ -639,7 +644,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
     def show_slice(self):
         im = self.ct_vol[self.cur_slice]
         im = cv2.resize(im,self.resize_shape)
-        x = round(self.resize_shape[0]*0.9)
+        x = round(self.resize_shape[0]*0.85)
         y = 15
         cv2.putText(im,
                     f"Slice {self.cur_slice+1}/{self.n_slices}",
