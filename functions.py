@@ -399,8 +399,8 @@ class pointSimulator2():
                 values = []
                 for slice_idx in slices:
                     if diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum() < 1:
-                        #TODO
-                        continue
+                        np.savez("crash_case.npz",diff_gt=diff_gt,diff_pred=diff_pred)
+                        
                     if np.random.randint(diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum())<diff_gt[i,:,slice_idx,:,:].sum():
                         dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                     else:

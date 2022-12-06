@@ -451,9 +451,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             
             point = PyQt5.QtCore.QPoint((event.x()-self.padding.x())/self.size.width() * self.point_shape[1]/self.zoomFactor,
                     (event.y()-self.padding.y())/self.size.height() * self.point_shape[0]/self.zoomFactor)
-            center = np.array([point.y(),point.x(),(self.cur_slice//self.n_slices * self.point_shape[2]).astype(int)])
+            center = np.array([point.y(),point.x(),round(self.cur_slice/self.n_slices * self.point_shape[2])])
             sign = 1 if event.button()==PyQt5.QtCore.Qt.LeftButton else -1
-            self.label = 1 if sign==1 else 2
+            self.label = 1 if sign==1 else 3
             painter_scribble = self.makePainter(self.annotationPix, 
                         self.color_picker(self.label, 
                             (self.label>0)*self.annotationOpacity)) # the painter used for drawing        
@@ -461,8 +461,9 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             self.updatePointVol(center,sign)
             self.predict()
             self.show_slice()
+            self.label = 1
             
-        if event.button() == PyQt5.QtCore.Qt.LeftButton: 
+        elif event.button() == PyQt5.QtCore.Qt.LeftButton: 
             if self.zPressed: # initiate zooming and not drawing
                 self.cursorPix.fill(self.color_picker(label=0, opacity=0)) # clear (fill with transparent)
                 self.lastCursorPoint = event.pos()
@@ -716,6 +717,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         thresh = 0.5
         
         if init and self.args.training.do_pointSimulation:
+            self.pred = 0
             sphere_size = self.args.pointSim.sphere_size
             self.pointSphere = rg.sphere(sphere_size[0],sphere_size[1]).astype(int)
             self.pointSphere_nnz = np.array(self.pointSphere.nonzero())-sphere_size[0]//2
@@ -792,7 +794,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         #     pred = zoom(pred,self.scales)
         
         #TODO only update pred below shown slice
-        self.pred = pred_.astype(int)
+        self.pred = ((self.pred + pred_)>0).astype(int)
     
         
     def getPrediction(self):
