@@ -5,10 +5,10 @@ import json
 def get_args(name="default",dict_mode=False):
     name_override=None
     
-    args_dict = {"name": 'pls_learn',
+    args_dict = {"name": 'default',
                 "wandb": True,
                 "pointSim": {
-                    "shape": [256,256,128],
+                    "shape": [128,128,128],
                     "radius": 1,
                     "range_sampled_points": [2, 10],
                     "border_mean": 10,
@@ -23,7 +23,7 @@ def get_args(name="default",dict_mode=False):
                     "downscale_mode": "avgpool", #one of ['maxpool','avgpool','conv']
                     "upscale_mode": "NDlinear", #one of ['nearest','bilinear','bicubic','trilinear','tconv','NDlinear']
                     #'bilinear' is only for 2D, "trilinear" is only for 3D. Will automatically find the correct one with 'NDlinear'
-                    "input_channels": 1, #number of excepted input channels. E.g. 3 for RGB input, 1 for greyscale.
+                    "input_channels": 2, #number of excepted input channels. E.g. 3 for RGB input, 1 for greyscale.
                     "num_blocks": 5, #One more than number of 2x downscales/upscales
                     "num_c": [4,8,16,32,64], #Number of channels in the blocks at different scales
                     "num_repeat": [1,2,2,4,4], #Number of repetitions of blocks at different scales
@@ -33,7 +33,7 @@ def get_args(name="default",dict_mode=False):
                 },
                 "training": {
                     "reshape": [128,128,128], #reshape size for batch. If int instead of list then same reshape is used for spacial dimensions
-                    "reshape_mode": None, # ['padding', 'fixed_size' or None]
+                    "reshape_mode": "fixed_size", # ['padding', 'fixed_size' or None]
                     "interp_mode": ["area","nearest"], #interpolation mode for rescaling of images
                     "max_iter": 30000, #Number of training iterations to complete training
                     "batch": 3, #Batch size
@@ -46,7 +46,8 @@ def get_args(name="default",dict_mode=False):
                     "datasets": "Synapse", #"Pancreas-CT", Decathlon or preprocessed_Decathlon
                     "dataset_p": None,
                     "weight_mode_loss": None,
-                    "do_pointSimulation": False,
+                    "do_pointSimulation": True,
+                    "pointSimultionProb": 0,
                     "tissue_range": [-100,600]
                     
                 }

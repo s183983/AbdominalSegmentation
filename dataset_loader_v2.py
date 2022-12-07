@@ -86,7 +86,7 @@ class CT_Dataset(torch.utils.data.Dataset):
         
         if args.training.do_pointSimulation:
             self.pointSimulator = pointSimulator(**vars(args.pointSim))
-            self.pointSimultionProb = args.training.do_pointSimulation
+            self.pointSimultionProb = args.training.pointSimultionProb
         else:
             self.pointSimulator = None
 

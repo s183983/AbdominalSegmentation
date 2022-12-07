@@ -387,9 +387,9 @@ class pointSimulator2():
         diff_gt = im_diff>0
         diff_pred = im_diff<0
         points_vol = np.zeros(diff_pred.shape).astype(np.float32)
-        batch_ims_diff = np.reshape(diff_gt+diff_pred,[im_diff.shape[0],1*self.shape[0]*self.shape[1]*self.shape[2]]).sum(axis=1)
+        batch_ims_diff = np.reshape(diff_gt+diff_pred,[im_diff.shape[0],self.shape[0]*self.shape[1]*self.shape[2]]).sum(axis=1)
         
-        for i in range(diff_pred.shape[0]):
+        for i in range(batch_ims_diff.shape[0]):
             if batch_ims_diff[i]>((self.shape[0]*self.shape[1]*self.shape[2])*1e-4):
                 n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
                 nnz_slices = im_diff[i].nonzero()[1]
@@ -398,7 +398,7 @@ class pointSimulator2():
                 centers = []
                 values = []
                 for slice_idx in slices:
-                    if diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum() < 1:
+                    if (diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum()) < 1:
                         np.savez("crash_case.npz",diff_gt=diff_gt,diff_pred=diff_pred)
                         
                     if np.random.randint(diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum())<diff_gt[i,:,slice_idx,:,:].sum():

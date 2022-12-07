@@ -88,7 +88,7 @@ def train_classifier(args, net, optim_net, start_iter,
         # print("fetched data")
         img = img.to(device, dtype=torch.float)
         label_gt = label_gt.to(device, dtype=torch.float)
-        ite_bool_train = np.random.rand()<0.1 and i>=1000
+        ite_bool_train = np.random.rand()<1 #and i>=1000
         
         with torch.no_grad():
             if ite_bool_train:
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, 
-                        default='kidneyPointSniperDebug', 
+                        default='default', 
                         help="name of the model")
     
     args_name = parser.parse_args()
