@@ -10,6 +10,7 @@ import raster_geometry as rg
 import matplotlib.pyplot as plt
 from scipy.ndimage.morphology import distance_transform_edt
 from random import randrange
+from scipy.ndimage import binary_erosion
 
 class HiddenPrints:
     def __enter__(self):
@@ -345,12 +346,12 @@ def saveTestSample(img, pred, label, save_name):
     
 class pointSimulator2():
     def __init__(self,
-                 shape = [128,128,128],
-                 radius = 1,
+                 shape = [128,128,128], #(D,W,H) AKA (2,0,1)
+                 radius = 3,
                  sphere_size = (5,2),
                  range_sampled_points = [2, 10],
-                 border_mean = None,
-                 border_p = None
+                 border_mean = 10,
+                 border_p = 0.5,
                  ):
         # [H,W,D]
         self.shape = shape 
@@ -376,6 +377,8 @@ class pointSimulator2():
         if torch.is_tensor(label_gt):
             label_gt = label_gt.cpu().detach().numpy()
             
+        label_pred = np.squeeze(label_pred, 1)
+        label_gt = np.squeeze(label_gt, 1)
 
         
        
@@ -386,25 +389,25 @@ class pointSimulator2():
         im_diff = label_gt - label_pred
         diff_gt = im_diff>0
         diff_pred = im_diff<0
-        points_vol = np.zeros(diff_pred.shape).astype(np.float32)
-        batch_ims_diff = np.reshape(diff_gt+diff_pred,[im_diff.shape[0],self.shape[0]*self.shape[1]*self.shape[2]]).sum(axis=1)
+        points_vol = np.zeros_like(diff_pred).astype(np.float32)
+        batch_ims_diff = np.reshape(diff_gt+diff_pred,[im_diff.shape[0], self.shape[0]*self.shape[1]*self.shape[2]]).sum(axis=1)
         
         for i in range(batch_ims_diff.shape[0]):
             if batch_ims_diff[i]>((self.shape[0]*self.shape[1]*self.shape[2])*1e-4):
                 n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
-                nnz_slices = im_diff[i].nonzero()[1]
-                nnz_slices = np.clip(nnz_slices,self.radius+1,self.shape[2]-self.radius-1)
+                nnz_slices = im_diff[i].nonzero()[0]
+                nnz_slices = np.clip(nnz_slices,self.radius+1,self.shape[0]-self.radius-1)
                 slices = np.random.choice(nnz_slices, n_points)
                 centers = []
                 values = []
                 for slice_idx in slices:
-                    if (diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum()) < 1:
+                    if (diff_gt[i,slice_idx,:,:].sum()+diff_pred[i,slice_idx,:,:].sum()) < 1:
                         np.savez("crash_case.npz",diff_gt=diff_gt,diff_pred=diff_pred)
                         
-                    if np.random.randint(diff_gt[i,:,slice_idx,:,:].sum()+diff_pred[i,:,slice_idx,:,:].sum())<diff_gt[i,:,slice_idx,:,:].sum():
-                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,:,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                    if np.random.randint(diff_gt[i,slice_idx,:,:].sum()+diff_pred[i,slice_idx,:,:].sum())<diff_gt[i,slice_idx,:,:].sum():
+                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_gt[i,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                     else:
-                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,:,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
+                        dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                     s1, s2 = dist_im.shape
                     dist_im[:self.radius,:] = 0
                     dist_im[:,:self.radius] = 0
@@ -420,16 +423,83 @@ class pointSimulator2():
             
                     center = np.array([point[0][0], point[0][1]])
                     centers.append(np.append(slice_idx, center))
-                    values.append(im_diff[i,:,slice_idx, point[0][0], point[0][1]])
+                    values.append(im_diff[i,slice_idx, point[0][0], point[0][1]])
                 
             # print(centers)
             
             
                 for c,v in zip(centers,values):
                     idx = c.reshape(3,1)+self.sphere_nnz
-                    points_vol[i, :, idx[0], idx[1], idx[2]] = v
+                    points_vol[i, idx[0], idx[1], idx[2]] = v
                     
                 self.centers = centers
+        return points_vol
+    
+    
+    def _randomSign(self):
+        return (2*np.random.randint(0,2,size=2)-1)
+    
+class batchPointSimulator():
+    def __init__(self,
+                 shape = [128,128,128], #(D,W,H) AKA (2,0,1)
+                 radius = 3,
+                 range_sampled_points = [2, 10],
+                 border_mean = 10,
+                 border_p = 0.5,
+                 sphere_size = (5,2)
+                 ):
+        # [H,W,D]
+        self.shape = shape 
+        # for use in rg.sphere
+        self.radius = radius
+        self.sphere_size = sphere_size
+        self.sphere = rg.sphere(sphere_size[0],sphere_size[1]).astype(int)
+        self.sphere_nnz = np.array(self.sphere.nonzero())-sphere_size[0]//2
+        self.range_sampled_points = range_sampled_points
+        self.border_mean = border_mean
+        self.border_p = border_p
+        
+        
+    def __call__(self, label):
+        """
+        1. find border of the label
+        2. sample some random points, which are on the border
+        3. add random noise in x and y direction, maybe between 5-50px (not in which slice it is)
+        4. categorize points as in or outside the label
+        5. render points in volume with a fixed radius
+        
+        """
+        if torch.is_tensor(label):
+            label = label.cpu().detach().numpy()
+        label = np.squeeze(label,1)
+        points_vol = np.zeros_like(label).astype(np.float32)
+        
+        for i in range(label.shape[0]):
+            n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
+            nnz_slices = label[i].nonzero()[0]
+            slices = np.random.choice(nnz_slices,n_points)
+            
+            centers = []
+            values = []
+            for slice_idx in slices:
+                label_slice = label[i,slice_idx,:,:].astype(int)
+                label_border = label_slice - binary_erosion(label_slice).astype(label_slice.dtype)
+                nnz_border = label_border.nonzero()
+                border_idx = np.random.randint(low=0,high=len(nnz_border[0]))
+                center = np.array([nnz_border[0][border_idx],nnz_border[1][border_idx]])
+                center_rc = center + self._randomSign()*(np.random.binomial(2*self.border_mean,self.border_p,size=2)+1)
+                centers.append(np.append(slice_idx, center_rc))
+                values.append(label_slice[center_rc[0],center_rc[1]])
+                
+            # print(centers)
+            
+            
+            for c,v in zip(centers,values):
+                idx = c.reshape(3,1)+self.sphere_nnz
+                points_vol[i, idx[0],idx[1],idx[2]] = 2*v-1
+                
+            self.centers = centers
+            
         return points_vol
     
     
