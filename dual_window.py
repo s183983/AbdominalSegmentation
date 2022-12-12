@@ -146,8 +146,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.surfaceFrame.GetRenderWindow().AddRenderer(ren)
         # self.iren_3d = self.surfaceFrame.GetRenderWindow().GetInteractor()
         
-        pred = self.volFrame.getPrediction()
-        pred_filt = gaussian_filter(pred,1)
+        pred = self.volFrame.getPrediction().astype(np.float32)
+        #TODO
+        # add gaussian 3d filter
+        pred_filt = gaussian_filter(pred,0.75)
         vtk_data = numpy_to_vtk(num_array=pred_filt.ravel(), deep=True, array_type=vtk.VTK_FLOAT)
 
         imgdat = vtk.vtkImageData()
@@ -200,10 +202,14 @@ class MainWindow(QtWidgets.QMainWindow):
         smoother.NonManifoldSmoothingOn();
         smoother.NormalizeCoordinatesOn();
         smoother.Update()
+
+        normals = vtk.vtkPolyDataNormals()
+        normals.SetInputData(smoother.GetOutput())
+        normals.Update()
         
 
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(smoother.GetOutput())
+        mapper.SetInputData(normals.GetOutput())
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)

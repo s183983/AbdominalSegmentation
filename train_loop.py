@@ -138,7 +138,7 @@ def train_classifier(args, net, optim_net, start_iter,
                         label_pred = net(img)
                         point_vol = torch.from_numpy(pointMaker(label_gt = label_gt, label_pred = label_pred))
                         img[:,1] = point_vol.squeeze(1)
-                        # img = torch.stack((img, point_vol), dim=1)
+                        # z = torch.stack((img, point_vol), dim=1)
                         #img[:,1,:,:] = point_vol.squeeze(1) #.permute(0,3,1,2)
                         
                     # img = torch.stack((img, point_vol)).permute(0,3,1,2)
