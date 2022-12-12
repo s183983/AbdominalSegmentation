@@ -239,7 +239,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, 
-                        default='default', 
+                        default='kidneyPointSniperDebug', 
                         help="name of the model")
     
     args_name = parser.parse_args()
