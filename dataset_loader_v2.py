@@ -84,6 +84,8 @@ class CT_Dataset(torch.utils.data.Dataset):
                        "LANCZOS4": cv2.INTER_LANCZOS4,}
         self.interp_modes = [interp_dict[i_m.upper()] for i_m in interp_mode]
         
+        self.do_pointSimulation = args.training.do_pointSimulation
+    
         if args.training.do_pointSimulation:
             self.pointSimulator = pointSimulator(**vars(args.pointSim))
             self.pointSimultionProb = args.training.pointSimultionProb
@@ -147,14 +149,14 @@ class CT_Dataset(torch.utils.data.Dataset):
         image = torch.from_numpy(aug_batch["image"]*2-1)
         
         
-        if self.pointSimulator is not None:
+        if self.do_pointSimulation is not None:
             if np.random.random()<self.pointSimultionProb and self.mode=="train":
                 point_vol = torch.from_numpy(self.pointSimulator(label))
             else:
-                point_vol = torch.zeros_like(image) #(C,D,W,H)
+                point_vol = torch.zeros_like(image) #(C,W,H,D)
             image = torch.stack((image,point_vol)).permute(0,3,1,2) #(C,D,W,H)
         else:
-            image = image.permute(2,0,1).unsqueeze(0) #(C,D,W,H)
+            image = image.permute(2,0,1).unsqueeze(0) #(D,W,H)
         label = torch.from_numpy(aug_batch["label"]).permute(2,0,1).unsqueeze(0) #(C,D,W,H)
 
         return image, label

@@ -6,7 +6,7 @@ def get_args(name="default",dict_mode=False):
     name_override=None
     
     args_dict = {"name": 'default',
-                "wandb": True,
+                "wandb": False,
                 "pointSim": {
                     "shape": [128,128,128],
                     "radius": 1,
@@ -36,7 +36,8 @@ def get_args(name="default",dict_mode=False):
                     "reshape_mode": "fixed_size", # ['padding', 'fixed_size' or None]
                     "interp_mode": ["area","nearest"], #interpolation mode for rescaling of images
                     "max_iter": 30000, #Number of training iterations to complete training
-                    "batch": 3, #Batch size
+                    "batch": 2, #Batch size
+                    "num_workers": 1,
                     "lr": 1e-5,#Learning rate
                     "weight_decay": 1e-3,#Adam optimizer weight decay
                     "augment": True,

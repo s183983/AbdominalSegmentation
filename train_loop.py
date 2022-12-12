@@ -23,7 +23,8 @@ from functions import (
     fxn,
     HiddenPrints,
     saveTestSample,
-    pointSimulator2
+    pointSimulator2,
+    batchPointSimulator
     )
 from config import (
     get_args,
@@ -75,7 +76,9 @@ def train_classifier(args, net, optim_net, start_iter,
     losses_10k_reset = {"loss_vali": {}, "loss_vali_ite": {}, "loss_vali_no_ite": {},
                    "loss_train": {}, "loss_train_ite": {}, "loss_train_no_ite": {},}
     losses_10k = copy.deepcopy(losses_10k_reset)
-    pointMaker = pointSimulator2(**vars(args.pointSim))
+    pointMaker1 = pointSimulator2(**vars(args.pointSim))
+    pointMaker2 = batchPointSimulator(**vars(args.pointSim))
+    
     for idx in pbar:
         i = idx + start_iter
         
@@ -88,16 +91,17 @@ def train_classifier(args, net, optim_net, start_iter,
         # print("fetched data")
         img = img.to(device, dtype=torch.float)
         label_gt = label_gt.to(device, dtype=torch.float)
-        ite_bool_train = np.random.rand()<1 #and i>=1000
+        ite_bool_train = np.random.rand()<0.8 and i>=1000
+        mod_select = np.random.rand() < (1-i/args.training.max_iter)
         
         with torch.no_grad():
             if ite_bool_train:
-                label_pred = net(img)
-                point_vol = torch.from_numpy(pointMaker(label_gt = label_gt, label_pred = label_pred))
-                # img = torch.stack((img, point_vol), dim=1)
-                img[:,1] = point_vol.squeeze(1) #.permute(0,4,1,2,3)
-        
-        
+                if mod_select:
+                    label_pred = net(img)
+                    point_vol = torch.from_numpy(pointMaker1(label_gt = label_gt, label_pred = label_pred))
+                else: point_vol = torch.from_numpy(pointMaker2(label=label_gt))
+
+            img[:,1] = point_vol #.permute(0,4,1,2,3)
         
         label_gt = (label_gt>eps).type(torch.float)       
         label_pred = net(img)
@@ -136,7 +140,7 @@ def train_classifier(args, net, optim_net, start_iter,
                     ite_bool_val = np.random.rand()<0.1 and i>=1000
                     if ite_bool_val:
                         label_pred = net(img)
-                        point_vol = torch.from_numpy(pointMaker(label_gt = label_gt, label_pred = label_pred))
+                        point_vol = torch.from_numpy(pointMaker1(label_gt = label_gt, label_pred = label_pred))
                         img[:,1] = point_vol.squeeze(1)
                         # z = torch.stack((img, point_vol), dim=1)
                         #img[:,1,:,:] = point_vol.squeeze(1) #.permute(0,3,1,2)
@@ -311,11 +315,11 @@ if __name__ == "__main__":
     dl_tr = torch.utils.data.DataLoader(ds_tr,
                                         batch_size=args.training.batch,
                                         drop_last=True,
-                                        num_workers=args.training.batch)
+                                        num_workers=args.training.num_workers)
     dl_va = torch.utils.data.DataLoader(ds_va,
                                         batch_size=args.training.batch,
                                         drop_last=True,
-                                        num_workers=args.training.batch)
+                                        num_workers=args.training.num_workers)
     
     dl_tr = sample_data(dl_tr)
     dl_va = sample_data(dl_va)
