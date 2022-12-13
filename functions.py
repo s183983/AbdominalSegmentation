@@ -409,10 +409,10 @@ class pointSimulator2():
                     else:
                         dist_im = distance_transform_edt(np.pad(np.squeeze(diff_pred[i,slice_idx,:,:]), [(1, 1), (1, 1)], mode='constant'))[1:-1,1:-1]
                     s1, s2 = dist_im.shape
-                    dist_im[:self.radius,:] = 0
-                    dist_im[:,:self.radius] = 0
-                    dist_im[(s1-self.radius):,:] = 0
-                    dist_im[:,(s2-self.radius):] = 0
+                    dist_im[:(self.radius+1),:] = 0
+                    dist_im[:,:(self.radius+1)] = 0
+                    dist_im[(s1-self.radius-1):,:] = 0
+                    dist_im[:,(s2-self.radius-1):] = 0
                     
                     if dist_im.sum() < 1:
                         continue
