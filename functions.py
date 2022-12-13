@@ -411,8 +411,8 @@ class pointSimulator2():
                     s1, s2 = dist_im.shape
                     dist_im[:(self.radius*2),:] = 0
                     dist_im[:,:(self.radius*2)] = 0
-                    dist_im[(-self.radius*2):,:] = 0
-                    dist_im[:,(-self.radius*2):] = 0
+                    dist_im[(-self.radius*2-1):,:] = 0
+                    dist_im[:,(-self.radius*2-1):] = 0
                     
                     if dist_im.sum() < 1:
                         continue
