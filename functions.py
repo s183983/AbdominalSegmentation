@@ -360,8 +360,7 @@ class pointSimulator2():
         self.sphere_size = sphere_size
         self.range_sampled_points = range_sampled_points
         self.sphere = rg.sphere(sphere_size[0],sphere_size[1]).astype(int)
-        self.sphere_nnz = np.array(self.sphere.nonzero())-sphere_size[0]//2
-        
+        self.sphere_nnz = np.array(self.sphere.nonzero())-sphere_size[1]        
         
     def __call__(self, label_pred, label_gt):
         """
@@ -431,6 +430,7 @@ class pointSimulator2():
             
                 for c,v in zip(centers,values):
                     idx = c.reshape(3,1)+self.sphere_nnz
+                    print(idx[0])
                     points_vol[i, idx[0], idx[1], idx[2]] = v
                     
                 self.centers = centers
