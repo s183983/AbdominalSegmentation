@@ -101,7 +101,7 @@ def train_classifier(args, net, optim_net, start_iter,
                     point_vol = torch.from_numpy(pointMaker1(label_gt = label_gt, label_pred = label_pred))
                 else: point_vol = torch.from_numpy(pointMaker2(label=label_gt))
 
-            img[:,1] = point_vol #.permute(0,4,1,2,3)
+                img[:,1] = point_vol #.permute(0,4,1,2,3)
         
         label_gt = (label_gt>eps).type(torch.float)       
         label_pred = net(img)
