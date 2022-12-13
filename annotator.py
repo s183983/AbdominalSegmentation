@@ -461,7 +461,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             self.updatePointVol(center,sign)
             self.predict()
             self.show_slice()
-            self.label = 1
+            # self.label = 1
             
         elif event.button() == PyQt5.QtCore.Qt.LeftButton: 
             if self.zPressed: # initiate zooming and not drawing
@@ -486,7 +486,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
                 self.lastDrawPoint = event.pos()   
                 self.activelyDrawing = True
                 # self.update_pred_point(point)
-                self.point_list.append([point.x(),point.y()])
+                self.point_list.append([point.y(),point.x()])
 
                 # print("event pos", event.pos())
                 # print("point pos", point)
@@ -508,7 +508,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             painter_resize.drawLine(self.last_resize_point, point)
             self.last_resize_point = point
             # self.update_pred_point(point)
-            self.point_list.append([point.x(),point.y()])
+            self.point_list.append([point.y(),point.x()])
         # just moving around
         self.drawCursorPoint(event.pos())
             
@@ -714,7 +714,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
         
     def predict(self, init=False):
         
-        thresh = 0.5
+        thresh = 0.3
         
         if init and self.args.training.do_pointSimulation:
             self.pred = 0
@@ -847,6 +847,7 @@ class Annotator(PyQt5.QtWidgets.QWidget):
             self.penOpacity = 0.7
             self.showInfo(f'Changed to segmentation mode')
         elif key==PyQt5.QtCore.Qt.Key_D:
+            self.segmentation_mode = False
             self.label = 1
             self.penWidth = int(self.size.width()/40)
             self.annotationOpacity = 0.4
