@@ -430,7 +430,7 @@ class pointSimulator2():
             
                 for c,v in zip(centers,values):
                     idx = c.reshape(3,1)+self.sphere_nnz
-                    print(idx[0])
+                    # print(idx[0])
                     points_vol[i, idx[0], idx[1], idx[2]] = v
                     
                 self.centers = centers
