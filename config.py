@@ -9,7 +9,7 @@ def get_args(name="default",dict_mode=False):
                 "wandb": False,
                 "pointSim": {
                     "shape": [128,128,128],
-                    "radius": 1,
+                    "radius": 3,
                     "range_sampled_points": [2, 10],
                     "border_mean": 10,
                     "border_p": 0.4,
