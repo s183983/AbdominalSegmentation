@@ -27,7 +27,7 @@ for i in range(batch_ims_diff.shape[0]):
     if batch_ims_diff[i]>((shape[0]*shape[1]*shape[2])*1e-4):
         n_points = np.random.randint(low=range_sampled_points[0],high=range_sampled_points[1]+1)
         nnz_slices = im_diff[i].nonzero()[0]
-        nnz_slices = [x for x in nnz_slices if (x < (shape[0]-radius-1) and x>(radius+1))]
+        nnz_slices = nnz_slices[(nnz_slices>radius) & (nnz_slices<(shape[0]-radius))]
         slices = np.random.choice(nnz_slices, n_points)
         centers = []
         values = []

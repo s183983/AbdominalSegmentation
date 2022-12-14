@@ -395,7 +395,8 @@ class pointSimulator2():
             if batch_ims_diff[i]>((self.shape[0]*self.shape[1]*self.shape[2])*1e-4):
                 n_points = np.random.randint(low=self.range_sampled_points[0],high=self.range_sampled_points[1]+1)
                 nnz_slices = im_diff[i].nonzero()[0]
-                nnz_slices = [x for x in nnz_slices if (x < (self.shape[0]-self.radius-1) and x>(self.radius+1))]
+                nnz_slices = nnz_slices[(nnz_slices>self.radius) & (nnz_slices<(self.shape[0]-self.radius))]
+                #nnz_slices = [x for x in nnz_slices if (x < (self.shape[0]-self.radius-1) and x>(self.radius+1))]
                 #nnz_slices = np.clip(nnz_slices,self.radius+1,self.shape[0]-self.radius-1)
                 slices = np.random.choice(nnz_slices, n_points)
                 centers = []

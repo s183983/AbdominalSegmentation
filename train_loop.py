@@ -91,7 +91,7 @@ def train_classifier(args, net, optim_net, start_iter,
         # print("fetched data")
         img = img.to(device, dtype=torch.float)
         label_gt = label_gt.to(device, dtype=torch.float)
-        ite_bool_train = np.random.rand()<0.8 and i>=1000
+        ite_bool_train = np.random.rand()<0.8 #and i>=1000
         mod_select = np.random.rand() < (1-i/args.training.max_iter)
         
         with torch.no_grad():
@@ -137,11 +137,15 @@ def train_classifier(args, net, optim_net, start_iter,
                     img, label_gt = next(dl_va)
                     img = img.to(device, dtype=torch.float)
                     label_gt = label_gt.to(device, dtype=torch.float)
-                    ite_bool_val = np.random.rand()<0.1 and i>=1000
+                    ite_bool_val = np.random.rand()<0.4 and i>=1000
+                    mod_select = np.random.rand() < (1-i/args.training.max_iter)
                     if ite_bool_val:
-                        label_pred = net(img)
-                        point_vol = torch.from_numpy(pointMaker1(label_gt = label_gt, label_pred = label_pred))
-                        img[:,1] = point_vol.squeeze(1)
+                        if mod_select:
+                            label_pred = net(img)
+                            point_vol = torch.from_numpy(pointMaker1(label_gt = label_gt, label_pred = label_pred))
+                        else: point_vol = torch.from_numpy(pointMaker2(label=label_gt))
+                        
+                        img[:,1] = point_vol
                         # z = torch.stack((img, point_vol), dim=1)
                         #img[:,1,:,:] = point_vol.squeeze(1) #.permute(0,3,1,2)
                         
@@ -239,7 +243,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, 
-                        default='kidneyPointSniperDebug', 
+                        default='default', 
                         help="name of the model")
     
     args_name = parser.parse_args()

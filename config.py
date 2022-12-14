@@ -37,8 +37,8 @@ def get_args(name="default",dict_mode=False):
                     "interp_mode": ["area","nearest"], #interpolation mode for rescaling of images
                     "max_iter": 30000, #Number of training iterations to complete training
                     "batch": 2, #Batch size
-                    "num_workers": 6,
-                    "lr": 1e-5,#Learning rate
+                    "num_workers": 1,
+                    "lr": 1e-4,#Learning rate
                     "weight_decay": 1e-3,#Adam optimizer weight decay
                     "augment": True,
                     "aug_rampup": 10000, 
@@ -91,7 +91,7 @@ def get_args(name="default",dict_mode=False):
                                 "SE": [0,0,1,1,1,1]}}
             args_mod["training"]["max_iter"] = 25000
             args_mod["training"]["reshape_mode"] = "fixed_size"
-            args_mod["training"]["do_pointSimulation"] = 0.4
+            args_mod["training"]["do_pointSimulation"] = True
             args_mod["training"]["datasets"] = "Synapse"
             args_mod["training"]["batch"] = 2
             args_mod["training"]["lr"] = 1e-4
